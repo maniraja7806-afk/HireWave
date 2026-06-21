@@ -8,64 +8,112 @@ HireWave is a full-stack, responsive, on-demand home service marketplace tailore
 *   **Role-Based Access:** Distinct interfaces and permissions for Customers, Service Providers, and Administrators.
 *   **Intelligent Search & Filtering:** Quickly locate professionals using parameters like District, City, Area, Pincode, and Service Category.
 *   **Robust Booking Engine:** A full booking lifecycle management system allowing providers to Accept, Reject, or Mark Completed, while customers can Cancel, Rate, and Review.
-*   **Seamless Navigation:** Features breadcrumbs, universal back-button support, and a responsive mobile bottom navigation bar ensuring context and session data are preserved.
 *   **Modern UI/UX:** Built with a polished design system featuring smooth Framer Motion animations and full Dark Mode support.
+*   **Real Database Integration:** Powered by MongoDB Atlas for secure, persistent data storage.
+
+## 🌟 Non-Technical Overview (The Business Use Case)
+
+Finding reliable, vetted local professionals for home services is often disorganized and relies heavily on word-of-mouth. HireWave elegantly solves this by providing a hyper-localized digital marketplace.
+
+*   **For Customers:** A secure, intuitive platform to browse, filter, and book local mechanics, plumbers, and electricians based on their exact district, area, or pincode. Customers can verify quality through transparent community reviews.
+*   **For Service Providers:** A free digital storefront that acts as a lead-generation tool, allowing local experts to list their trade, set their availability, and manage booking requests directly from their phone or computer.
+*   **For the Platform (Admins):** A centralized dashboard to oversee operations, ensure platform safety, and manage the user ecosystem across all regions.
+
+## ⚙️ Technical Architecture
+
+HireWave is constructed as a modern, decoupled Monorepo (Full-Stack SPA):
+
+*   **Frontend Client:** Built as a Single Page Application (SPA) using **React 18** and **Vite**. State is managed cleanly using React Context and custom hooks. The UI is built mobile-first utilizing **Tailwind CSS** for responsive design and **Framer Motion** for polished, accessible micro-interactions.
+*   **Backend API Server:** A **Node.js** runtime running **Express.js** architecture, providing a secure RESTful API interface for the client. The backend code is written entirely in **TypeScript** and compiled rapidly using ESBuild for production.
+*   **Database & Storage:** Powered by a **MongoDB Atlas** NoSQL cloud cluster. Interaction is strictly validated using **Mongoose ODM** schemas to guarantee data integrity across highly relational collections (Users, Services, Bookings, Reviews, Favorites).
+*   **Security layer:** Authentication is handled statelessly via **JSON Web Tokens (JWT)**. Passwords are never stored in plaintext and are salted/hashed via **Bcrypt**.
 
 ## 🛠️ Technology Stack
 
 *   **Frontend:** React 18, Vite, Tailwind CSS, Framer Motion, React Router, Lucide Icons.
-*   **Backend:** Express.js, Node.js, JSON Web Tokens (JWT) for authentication.
-*   **Data & Persistence:** In-memory local file-based database (`seed-data.json`) utilizing automated seed generation scripts for instant, configuration-free local execution.
+*   **Backend:** Express.js, TypeScript, JSON Web Tokens (JWT) for authentication.
+*   **Database:** MongoDB Atlas, Mongoose ODM.
 
-## 🚀 Getting Started
+## 🚀 Getting Started Locally
 
-Follow these steps to run the application locally.
+Follow these steps to run the application locally on your machine.
 
-### 1. Install Dependencies
+### 1. Prerequisites
 
-Ensure you have Node.js installed, then install the required packages:
+Ensure you have Node.js (v18+) installed. You will also need a MongoDB Atlas cluster URI.
+
+### 2. Environment Setup
+
+*   Clone the repository.
+*   Rename the `.env.example` file to `.env` (or create a new `.env` file).
+*   Add your MongoDB connection string to the `.env` file:
+    ```env
+    MONGODB_URI=mongodb+srv://<username>:<password>@cluster0.mongodb.net/hirewave?retryWrites=true&w=majority
+    JWT_SECRET=super-secret-jwt-key
+    PORT=3000
+    ```
+
+### 3. Install Dependencies
 
 ```bash
 npm install
 ```
 
-### 2. Generate Seed Data (Important)
+### 4. Generate Seed Data (Optional but Recommended)
 
-The backend relies on an auto-generated JSON file to simulate realistic database records (spanning 1000+ providers across Tamil Nadu, bookings, and user accounts). Generate it by running:
+To populate the database with realistic providers, customers, and bookings across Tamil Nadu, run the seed script:
 
 ```bash
 npm run seed
-# Or manually via: npx tsx src/server/seed.ts
 ```
 
-### 3. Run the Development Server
+### 5. Run the Local Server
 
-Start the integrated client and server environment:
+Start the integrated development environment:
 
 ```bash
 npm run dev
 ```
 
-The application will be accessible via `http://localhost:3000`.
+The application will be accessible at `http://localhost:3000`.
 
-### 4. Build for Production
+## ☁️ Deployment (Railway)
 
-To create a highly optimized production bundle:
+Railway is an excellent platform for hosting full-stack node applications like HireWave. Follow these steps to deploy:
 
-```bash
-npm run build
+### 1. Push to GitHub
+Make sure your project source code is pushed to a GitHub repository.
+
+### 2. Connect Railway to GitHub
+1. Go to [Railway.app](https://railway.app) and sign up/log in.
+2. Click **New Project** -> **Deploy from GitHub repo**.
+3. Select your `HireWave` repository and deploy.
+
+### 3. Configure Environment Variables
+1. Once the project is created in Railway, go to the deployment's **Variables** tab.
+2. Add the exact same variables you have in your local `.env` file:
+   *   `MONGODB_URI`: (Your production MongoDB Atlas connection string)
+   *   `JWT_SECRET`: (A secure random string)
+   *   `NODE_ENV`: `production`
+
+### 4. Verify Build and Start Commands
+Railway automatically runs `npm install` and your `npm run build` script. It will then boot your app using `npm start`. Ensure your `package.json` scripts match:
+```json
+"scripts": {
+    "build": "vite build && esbuild server.ts --bundle --platform=node --format=cjs --packages=external --sourcemap --outfile=dist/server.cjs",
+    "start": "NODE_ENV=production node dist/server.cjs"
+}
 ```
 
-Then, you can start the production server with:
+### 5. Access your Live Website
+1. Go to the **Settings** tab of your Railway deployment.
+2. Under "Networking" or "Public Networking", click **Generate Domain**.
+3. Your app is now live at the generated URL!
 
-```bash
-npm start
-```
+## 📝 Default Test Accounts
 
-## 📝 Default Test Accounts (Generated via Seed)
-
-You can use these credentials to explore the different dashboards:
+If you ran the seed script, you can use these credentials to explore the core dashboards:
 
 *   **Customer:** `john.doe@example.com` / `password123`
-*   **Provider:** `karthik.rajan@example.com` / `password123` (or any generated provider email)
+*   **Provider:** `karthik.rajan@example.com` / `password123` (or any manually generated provider email)
 *   **Admin:** `admin@hirewave.com` / `admin123`
