@@ -31,12 +31,9 @@ async function createServer() {
   } else if (MONGODB_URI.includes('user:pass@cluster.mongodb.net')) {
     console.warn('WARNING: MONGODB_URI is using the placeholder value. Please update it with your real MongoDB Atlas connection string. Database features will be simulated or disabled.');
   } else {
-    try {
-      await mongoose.connect(MONGODB_URI);
-      console.log('Connected to MongoDB Atlas');
-    } catch (error) {
-      console.error('MongoDB connection error:', error);
-    }
+    mongoose.connect(MONGODB_URI)
+      .then(() => console.log('Connected to MongoDB Atlas'))
+      .catch((error) => console.error('MongoDB connection error:', error));
   }
 
   // API Routes

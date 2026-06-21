@@ -32,7 +32,30 @@ const CATEGORIES = [
 
 async function seed() {
   try {
-    console.log('Generating seed data locally (skipping DB connection due to network config)...');
+    console.log('Generating seed data locally...');
+    
+    const MONGODB_URI = process.env.MONGODB_URI;
+    let isMongoConnected = false;
+    
+    if (MONGODB_URI && !MONGODB_URI.includes('user:pass')) {
+      try {
+        await mongoose.connect(MONGODB_URI);
+        isMongoConnected = true;
+        console.log('Connected to MongoDB Atlas for seeding.');
+        // Clear existing data
+        await User.deleteMany({});
+        await Service.deleteMany({});
+        await Booking.deleteMany({});
+        await Review.deleteMany({});
+        await Favorite.deleteMany({});
+        await Notification.deleteMany({});
+        console.log('Cleared existing MongoDB data.');
+      } catch (err) {
+        console.error('Failed to connect to MongoDB Atlas:', err);
+      }
+    } else {
+       console.log('Skipping MongoDB connection (no valid MONGODB_URI).');
+    }
     
     // We will use mongoose.Types.ObjectId() directly to generate IDs
     const salt = await bcrypt.genSalt(10);
@@ -227,6 +250,19 @@ async function seed() {
     };
 
     fs.writeFileSync(path.join(__dirname, '../../seed-data.json'), JSON.stringify(exportData));
+    console.log('Saved to seed-data.json.');
+
+    if (isMongoConnected) {
+      console.log('Saving data to MongoDB Atlas...');
+      await User.insertMany(exportData.users);
+      await Service.insertMany(exportData.services);
+      await Booking.insertMany(exportData.bookings);
+      await Review.insertMany(exportData.reviews);
+      await Favorite.insertMany(exportData.favorites);
+      await Notification.insertMany(exportData.notifications);
+      console.log('Saved to MongoDB Atlas successfully.');
+      await mongoose.disconnect();
+    }
 
     console.log('Seeding completed successfully!');
     process.exit(0);
