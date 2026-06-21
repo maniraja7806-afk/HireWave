@@ -1,0 +1,9 @@
+import express from 'express';
+
+const router = express.Router();
+
+router.get('/stats', (req, res) => {
+  res.json({ message: 'Admin stats' });
+});
+
+export default router;

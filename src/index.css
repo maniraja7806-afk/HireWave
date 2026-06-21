@@ -1,0 +1,15 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:is(.dark *));
+
+/* Hide default browser password reveal buttons */
+input::-ms-reveal,
+input::-ms-clear {
+  display: none;
+}
+
+input::-webkit-credentials-auto-fill-button {
+  visibility: hidden;
+  position: absolute;
+  right: 0;
+}
