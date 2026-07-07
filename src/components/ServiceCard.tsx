@@ -1,5 +1,6 @@
 import React from 'react';
 import { Star, MapPin, Clock, Award, CheckCircle } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
 interface ServiceCardProps {
   service: any;
@@ -8,26 +9,31 @@ interface ServiceCardProps {
 
 export const ServiceCard: React.FC<ServiceCardProps> = ({ service, onBook }) => {
   const provider = service.provider || {};
+  const providerId = provider._id || provider;
   
   return (
     <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 p-6 transition-all hover:shadow-md flex flex-col h-full">
       <div className="flex flex-col sm:flex-row gap-5 mb-5 items-start">
-        {provider.profileImage ? (
-          <img 
-            src={provider.profileImage} 
-            alt={provider.name} 
-            className="w-16 h-16 rounded-full object-cover shadow-sm bg-slate-100 dark:bg-slate-700 flex-shrink-0"
-          />
-        ) : (
-          <div className="w-16 h-16 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 flex items-center justify-center font-bold text-xl flex-shrink-0">
-             {provider.name?.charAt(0) || 'P'}
-          </div>
-        )}
+        <Link to={`/provider/${providerId}`} className="flex-shrink-0">
+          {provider.profileImage ? (
+            <img 
+              src={provider.profileImage} 
+              alt={provider.name} 
+              className="w-16 h-16 rounded-full object-cover shadow-sm bg-slate-100 dark:bg-slate-700"
+            />
+          ) : (
+            <div className="w-16 h-16 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 flex items-center justify-center font-bold text-xl">
+               {provider.name?.charAt(0) || 'P'}
+            </div>
+          )}
+        </Link>
         
         <div className="flex-1">
           <div className="flex justify-between items-start">
             <div>
-              <h3 className="text-lg font-bold text-slate-900 dark:text-white leading-tight">{provider.name || 'Unknown Provider'}</h3>
+              <Link to={`/provider/${providerId}`} className="hover:underline">
+                <h3 className="text-lg font-bold text-slate-900 dark:text-white leading-tight">{provider.name || 'Unknown Provider'}</h3>
+              </Link>
               <p className="text-sm font-medium text-blue-600 dark:text-blue-400 mt-1 uppercase tracking-wide">{service.category}</p>
             </div>
             <div className="text-right">

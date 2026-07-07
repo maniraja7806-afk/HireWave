@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import api from '../services/api';
 import { ServiceCard } from '../components/ServiceCard';
 import { Search, MapPin } from 'lucide-react';
@@ -18,6 +18,19 @@ const CATEGORIES = [
   'General Appliance Maintenance'
 ];
 
+const LOCATIONS = [
+  'Chennai', 'Coimbatore', 'Madurai', 'Tiruchirappalli', 'Salem', 'Tirunelveli', 'Erode',
+  'Vellore', 'Thanjavur', 'Dindigul', 'Kanchipuram', 'Karur', 'Namakkal', 'Cuddalore',
+  'Thoothukudi', 'Virudhunagar', 'Kanniyakumari', 'Krishnagiri', 'Dharmapuri', 'Sivagangai',
+  'Ramanathapuram', 'Ariyalur', 'Perambalur', 'Tenkasi', 'Nilgiris', 'Tiruppur', 'Mayiladuthurai',
+  'Ranipet', 'Tirupathur', 'Chengalpattu', 'Kallakurichi', 'Nagapattinam', 'Pudukottai',
+  'Villupuram', 'Thiruvarur'
+];
+
+const SEARCH_KEYWORDS = [
+  'Repair', 'Service', 'Installation', 'Maintenance', 'Fix', 'Technician', 'Wiring', 'Pipe', 'Leak', 'Cooling'
+];
+
 export const Services = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const initialSearch = searchParams.get('search') || '';
@@ -34,18 +47,82 @@ export const Services = () => {
   const [bookingDate, setBookingDate] = useState('');
   const [bookingTime, setBookingTime] = useState('');
 
+  const [locationSuggestions, setLocationSuggestions] = useState<string[]>([]);
+  const [searchSuggestions, setSearchSuggestions] = useState<string[]>([]);
+  const [showLocationSuggestions, setShowLocationSuggestions] = useState(false);
+  const [showSearchSuggestions, setShowSearchSuggestions] = useState(false);
+
+  const locationRef = useRef<HTMLDivElement>(null);
+  const searchRef = useRef<HTMLDivElement>(null);
+
   const { user } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
-    fetchServices();
-    
-    // Update URL params to preserve state on navigation
-    const params = new URLSearchParams();
-    if (search) params.set('search', search);
-    if (location) params.set('location', location);
-    if (category) params.set('category', category);
-    setSearchParams(params, { replace: true });
+    const handleClickOutside = (event: MouseEvent) => {
+      if (locationRef.current && !locationRef.current.contains(event.target as Node)) {
+        setShowLocationSuggestions(false);
+      }
+      if (searchRef.current && !searchRef.current.contains(event.target as Node)) {
+        setShowSearchSuggestions(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  useEffect(() => {
+    if (location.trim()) {
+      const match = location.toLowerCase();
+      const filtered = LOCATIONS.filter(loc => loc.toLowerCase().includes(match));
+      setLocationSuggestions(filtered);
+    } else {
+      setLocationSuggestions(LOCATIONS);
+    }
+  }, [location]);
+
+  useEffect(() => {
+    if (search.trim()) {
+      const match = search.toLowerCase();
+      const catMatches = CATEGORIES.filter(cat => cat.toLowerCase().includes(match));
+      const keyMatches = SEARCH_KEYWORDS.filter(key => key.toLowerCase().includes(match));
+      
+      // Basic fuzzy match attempt if no direct matches
+      if (catMatches.length === 0 && keyMatches.length === 0) {
+        const fuzzyCatMatches = CATEGORIES.filter(cat => {
+          const chars = match.split('');
+          let catLower = cat.toLowerCase();
+          return chars.every(char => {
+             const idx = catLower.indexOf(char);
+             if(idx > -1) {
+               catLower = catLower.slice(idx + 1);
+               return true;
+             }
+             return false;
+          });
+        });
+        setSearchSuggestions(fuzzyCatMatches);
+      } else {
+        setSearchSuggestions([...catMatches, ...keyMatches]);
+      }
+    } else {
+      setSearchSuggestions(CATEGORIES);
+    }
+  }, [search]);
+
+  useEffect(() => {
+    // Debounce the actual API call
+    const timer = setTimeout(() => {
+      fetchServices();
+      
+      const params = new URLSearchParams();
+      if (search) params.set('search', search);
+      if (location) params.set('location', location);
+      if (category) params.set('category', category);
+      setSearchParams(params, { replace: true });
+    }, 400); // 400ms delay
+
+    return () => clearTimeout(timer);
   }, [search, category, location, setSearchParams]);
 
   const fetchServices = async () => {
@@ -113,15 +190,36 @@ export const Services = () => {
         </div>
         
         <div className="flex flex-col sm:flex-row gap-3 w-full lg:w-auto">
-          <div className="relative w-full sm:w-64">
+          <div className="relative w-full sm:w-64" ref={locationRef}>
             <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 dark:text-slate-500" />
             <input 
               type="text" 
               placeholder="City, Area or Pincode..." 
               value={location}
-              onChange={(e) => setLocation(e.target.value)}
+              onChange={(e) => {
+                setLocation(e.target.value);
+                setShowLocationSuggestions(true);
+              }}
+              onFocus={() => setShowLocationSuggestions(true)}
               className="w-full pl-10 pr-4 py-2.5 border border-slate-200 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 transition-colors"
             />
+            {showLocationSuggestions && location.trim().length > 0 && locationSuggestions.length > 0 && (
+              <ul className="absolute z-50 w-full mt-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg shadow-lg max-h-60 overflow-auto">
+                {locationSuggestions.map((suggestion, index) => (
+                  <li 
+                    key={index} 
+                    className="px-4 py-3 hover:bg-slate-50 dark:hover:bg-slate-700 cursor-pointer text-slate-700 dark:text-slate-300 transition-colors flex items-center gap-2"
+                    onClick={() => {
+                      setLocation(suggestion);
+                      setShowLocationSuggestions(false);
+                    }}
+                  >
+                    <MapPin className="w-4 h-4 text-slate-400" />
+                    {suggestion}
+                  </li>
+                ))}
+              </ul>
+            )}
           </div>
           
           <select 
@@ -135,15 +233,35 @@ export const Services = () => {
             ))}
           </select>
 
-          <div className="relative w-full sm:w-64">
+          <div className="relative w-full sm:w-64" ref={searchRef}>
              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 dark:text-slate-500" />
              <input 
                type="text" 
                placeholder="Search services..." 
                value={search}
-               onChange={(e) => setSearch(e.target.value)}
+               onChange={(e) => {
+                 setSearch(e.target.value);
+                 setShowSearchSuggestions(true);
+               }}
+               onFocus={() => setShowSearchSuggestions(true)}
                className="w-full pl-10 pr-4 py-2.5 border border-slate-200 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 transition-colors"
              />
+             {showSearchSuggestions && search.trim().length > 0 && searchSuggestions.length > 0 && (
+              <ul className="absolute z-50 w-full mt-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg shadow-lg max-h-60 overflow-auto">
+                {searchSuggestions.map((suggestion, index) => (
+                  <li 
+                    key={index} 
+                    className="px-4 py-3 hover:bg-slate-50 dark:hover:bg-slate-700 cursor-pointer text-slate-700 dark:text-slate-300 transition-colors"
+                    onClick={() => {
+                      setSearch(suggestion);
+                      setShowSearchSuggestions(false);
+                    }}
+                  >
+                    {suggestion}
+                  </li>
+                ))}
+              </ul>
+            )}
           </div>
         </div>
       </div>

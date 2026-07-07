@@ -3,17 +3,71 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { BrowserRouter as Router, Routes, Route, Link, useNavigate, useLocation } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
-import { Toaster } from 'react-hot-toast';
-import { Moon, Sun, ArrowLeft, Home as HomeIcon, ChevronRight, Search, LayoutDashboard, User } from 'lucide-react';
+import { Toaster, toast } from 'react-hot-toast';
+import { Moon, Sun, ArrowLeft, Home as HomeIcon, ChevronRight, Search, LayoutDashboard, User, Bell } from 'lucide-react';
+import api from './services/api';
 
 import { Services } from './pages/Services';
 import { Dashboard } from './pages/Dashboard';
+import { ProviderProfile } from './pages/ProviderProfile';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import { Home } from './pages/Home';
+
+const NotificationManager = ({ setUnreadCount }: { setUnreadCount: (c: (prev: number) => number) => void }) => {
+  const { user } = useAuth();
+  const prevBookingsRef = useRef<any[]>([]);
+
+  useEffect(() => {
+    if (!user) return;
+    
+    let isMounted = true;
+    
+    const fetchBookings = async () => {
+      try {
+        const response = await api.get('/bookings/my-bookings');
+        const currentBookings = response.data;
+        
+        if (prevBookingsRef.current.length > 0) {
+           let newNotifications = 0;
+           currentBookings.forEach((currentBooking: any) => {
+             const prevBooking = prevBookingsRef.current.find((b: any) => b._id === currentBooking._id);
+             if (prevBooking && prevBooking.status === 'Pending' && (currentBooking.status === 'Accepted' || currentBooking.status === 'Confirmed')) {
+                if (user.role === 'Customer') {
+                  toast.success(`Booking Confirmed: ${currentBooking.service?.title || 'Home Service'}`, { icon: '✅' });
+                  newNotifications++;
+                }
+             }
+           });
+           
+           if (newNotifications > 0) {
+             setUnreadCount((prev: number) => prev + newNotifications);
+           }
+        }
+        
+        prevBookingsRef.current = currentBookings;
+      } catch (error) {
+        // Silently fail for polling
+      }
+    };
+    
+    fetchBookings();
+    
+    const intervalId = setInterval(() => {
+       if (isMounted) fetchBookings();
+    }, 5000);
+    
+    return () => {
+      isMounted = false;
+      clearInterval(intervalId);
+    };
+  }, [user, setUnreadCount]);
+
+  return null;
+};
 
 const PageHeader = () => {
   const navigate = useNavigate();
@@ -73,7 +127,7 @@ const PageHeader = () => {
   );
 };
 
-const Navbar = ({ toggleTheme, isDark }: any) => {
+const Navbar = ({ toggleTheme, isDark, unreadCount, setUnreadCount }: any) => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
@@ -86,6 +140,11 @@ const Navbar = ({ toggleTheme, isDark }: any) => {
   const handleLogout = () => {
     logout();
     navigate('/login');
+  };
+  
+  const handleBellClick = () => {
+    setUnreadCount(0);
+    navigate('/dashboard');
   };
   
   return (
@@ -101,6 +160,12 @@ const Navbar = ({ toggleTheme, isDark }: any) => {
         <Link to="/services" className="hidden sm:block text-slate-600 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400 font-medium transition-colors">Find Services</Link>
         {user ? (
           <>
+            <button onClick={handleBellClick} className="relative p-2 rounded-full text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200 transition-colors">
+              <Bell className="w-5 h-5" />
+              {unreadCount > 0 && (
+                <span className="absolute top-1.5 right-2 w-2 h-2 bg-red-500 rounded-full border-2 border-white dark:border-slate-900"></span>
+              )}
+            </button>
             <Link to="/dashboard" className="hidden sm:block text-slate-600 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400 font-medium transition-colors">Dashboard</Link>
             <div className="hidden sm:block h-6 w-px bg-slate-200 dark:bg-slate-700 mx-1"></div>
             <button onClick={handleLogout} className="text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 font-medium transition-colors">Logout</button>
@@ -152,6 +217,7 @@ const BottomNav = () => {
 
 const Layout = ({ children }: { children: React.ReactNode }) => {
   const [isDark, setIsDark] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
 
   useEffect(() => {
     if (isDark) {
@@ -164,7 +230,8 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
   return (
     <div className={`min-h-screen flex flex-col font-sans bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-slate-100 transition-colors pb-16 md:pb-0`}>
       <Router>
-        <Navbar toggleTheme={() => setIsDark(!isDark)} isDark={isDark} />
+        <NotificationManager setUnreadCount={setUnreadCount} />
+        <Navbar toggleTheme={() => setIsDark(!isDark)} isDark={isDark} unreadCount={unreadCount} setUnreadCount={setUnreadCount} />
         <PageHeader />
         {children}
         <BottomNav />
@@ -181,6 +248,7 @@ export default function App() {
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/services" element={<Services />} />
+          <Route path="/provider/:id" element={<ProviderProfile />} />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
           <Route path="/dashboard" element={<Dashboard />} />

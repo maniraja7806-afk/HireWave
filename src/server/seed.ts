@@ -114,10 +114,10 @@ async function seed() {
       'Pandian', 'Chander', 'Srinivasan', 'Murthy', 'Raman', 'Ganesan', 'Mani'
     ];
 
-    console.log(`Generating Providers for ${TN_DISTRICTS.length} TN Districts (35 per district)...`);
+    console.log(`Generating Providers for ${TN_DISTRICTS.length} TN Districts (505 per district)...`);
     const providers = [];
     for (const district of TN_DISTRICTS) {
-      for (let i = 0; i < 35; i++) {
+      for (let i = 0; i < 505; i++) {
         const category = faker.helpers.arrayElement(CATEGORIES);
         const firstName = faker.helpers.arrayElement(TAMIL_FIRST_NAMES);
         const lastName = faker.helpers.arrayElement(TAMIL_LAST_NAMES);
@@ -126,7 +126,7 @@ async function seed() {
         providers.push({
           _id: new mongoose.Types.ObjectId(),
           name: providerName,
-          email: `${firstName.toLowerCase()}.${lastName.toLowerCase()}${i}@example.com`,
+          email: `${firstName.toLowerCase()}.${lastName.toLowerCase()}.${district.toLowerCase().replace(/[^a-z]/g, '')}${i}@example.com`,
           password: defaultPassword,
           role: 'Provider',
           category: category,
@@ -165,7 +165,7 @@ async function seed() {
       }
     }
 
-    console.log('Generating 100 Services (1 per provider)...');
+    console.log(`Generating ${providers.length} Services (1 per provider)...`);
     const services = providers.map(p => ({
       _id: new mongoose.Types.ObjectId(),
       provider: p._id,
@@ -173,6 +173,7 @@ async function seed() {
       description: p.description,
       category: p.category,
       price: p.hourlyCharge,
+      duration: '1 hour',
       location: p.city,
       createdAt: new Date()
     }));
@@ -254,8 +255,20 @@ async function seed() {
 
     if (isMongoConnected) {
       console.log('Saving data to MongoDB Atlas...');
-      await User.insertMany(exportData.users);
-      await Service.insertMany(exportData.services);
+      
+      const chunkSize = 1000;
+      console.log(`Inserting ${exportData.users.length} users...`);
+      for (let i = 0; i < exportData.users.length; i += chunkSize) {
+        await User.insertMany(exportData.users.slice(i, i + chunkSize));
+        console.log(`  Inserted ${Math.min(i + chunkSize, exportData.users.length)} / ${exportData.users.length} users`);
+      }
+
+      console.log(`Inserting ${exportData.services.length} services...`);
+      for (let i = 0; i < exportData.services.length; i += chunkSize) {
+        await Service.insertMany(exportData.services.slice(i, i + chunkSize));
+        console.log(`  Inserted ${Math.min(i + chunkSize, exportData.services.length)} / ${exportData.services.length} services`);
+      }
+
       await Booking.insertMany(exportData.bookings);
       await Review.insertMany(exportData.reviews);
       await Favorite.insertMany(exportData.favorites);

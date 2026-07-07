@@ -12,6 +12,8 @@ import authRoutes from './src/server/routes/authRoutes.js';
 import serviceRoutes from './src/server/routes/serviceRoutes.js';
 import bookingRoutes from './src/server/routes/bookingRoutes.js';
 import adminRoutes from './src/server/routes/adminRoutes.js';
+import reviewRoutes from './src/server/routes/reviewRoutes.js';
+import userRoutes from './src/server/routes/userRoutes.js';
 
 dotenv.config();
 
@@ -41,6 +43,8 @@ async function createServer() {
   app.use('/api/services', serviceRoutes);
   app.use('/api/bookings', bookingRoutes);
   app.use('/api/admin', adminRoutes);
+  app.use('/api/reviews', reviewRoutes);
+  app.use('/api/users', userRoutes);
 
   // Serve Frontend
   if (process.env.NODE_ENV === 'production') {

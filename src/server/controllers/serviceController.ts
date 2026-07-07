@@ -78,8 +78,24 @@ export const getServices = async (req: Request, res: Response) => {
     if (search) {
       query.title = { $regex: search, $options: 'i' };
     }
+    
     if (location) {
-      query.location = { $regex: location, $options: 'i' };
+      const { User } = await import('../models/User.js');
+      const matchingProviders = await User.find({
+        role: 'Provider',
+        $or: [
+          { city: { $regex: location, $options: 'i' } },
+          { area: { $regex: location, $options: 'i' } },
+          { pincode: { $regex: location, $options: 'i' } },
+          { serviceArea: { $regex: location, $options: 'i' } }
+        ]
+      });
+      const providerIds = matchingProviders.map(p => p._id);
+      
+      query.$or = [
+        { location: { $regex: location, $options: 'i' } },
+        { provider: { $in: providerIds } }
+      ];
     }
 
     const services = await Service.find(query).populate('provider', 'name email profileImage averageRating reviewCount experience serviceArea availability city');

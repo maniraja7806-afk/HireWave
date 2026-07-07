@@ -28,6 +28,113 @@ HireWave is constructed as a modern, decoupled Monorepo (Full-Stack SPA):
 *   **Database & Storage:** Powered by a **MongoDB Atlas** NoSQL cloud cluster. Interaction is strictly validated using **Mongoose ODM** schemas to guarantee data integrity across highly relational collections (Users, Services, Bookings, Reviews, Favorites).
 *   **Security layer:** Authentication is handled statelessly via **JSON Web Tokens (JWT)**. Passwords are never stored in plaintext and are salted/hashed via **Bcrypt**.
 
+## 🔄 Project Flow
+
+### **Customer Flow**
+
+```text
+Start
+   │
+   ▼
+Open HireWave Website
+   │
+   ▼
+Customer Login
+(Enter any Username & Password)
+   │
+   ▼
+Home Page
+   │
+   ▼
+Select Current Location
+(City / Area / Pincode)
+   │
+   ▼
+Choose Service Category
+   │
+   ▼
+View Nearby Service Providers
+   │
+   ▼
+Apply Filters
+(Rating • Price • Availability)
+   │
+   ▼
+View Provider Profile
+   │
+   ▼
+Book Service
+(Select Date & Time)
+   │
+   ▼
+Booking Request Sent
+   │
+   ▼
+Provider Accepts / Rejects Request
+   │
+   ├───────────────┐
+   │               │
+Accepted        Rejected
+   │               │
+   ▼               ▼
+Service Starts   User Notification
+   │
+   ▼
+Service Completed
+   │
+   ▼
+Payment
+   │
+   ▼
+Review & Rating
+   │
+   ▼
+Booking Saved in History
+   │
+   ▼
+Logout
+   │
+   ▼
+End
+```
+
+### **Admin Flow**
+
+```text
+Admin Login
+      │
+      ▼
+Admin Dashboard
+      │
+      ├── Manage Customers
+      ├── Manage Providers
+      ├── Verify Providers
+      ├── Manage Bookings
+      ├── Manage Reviews
+      ├── View Reports & Analytics
+      ▼
+Logout
+```
+
+### **Service Provider Flow**
+
+```text
+Provider Login
+      │
+      ▼
+Provider Dashboard
+      │
+      ├── Manage Profile
+      ├── Update Availability
+      ├── View Booking Requests
+      ├── Accept/Reject Bookings
+      ├── Complete Services
+      ├── View Reviews
+      └── View Earnings
+      ▼
+Logout
+```
+
 ## 🛠️ Technology Stack
 
 *   **Frontend:** React 18, Vite, Tailwind CSS, Framer Motion, React Router, Lucide Icons.

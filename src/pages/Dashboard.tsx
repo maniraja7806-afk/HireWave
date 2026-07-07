@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import api from '../services/api';
 import { useAuth } from '../context/AuthContext';
-import { Calendar, User, Star, CopyPlus, MessageSquare, MapPin, BarChart3, Clock, AlertTriangle } from 'lucide-react';
+import { Calendar, User, Star, CopyPlus, MessageSquare, MapPin, BarChart3, Clock, AlertTriangle, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const TabButton = ({ active, onClick, icon: Icon, label }: any) => (
@@ -76,6 +76,13 @@ export const Dashboard = () => {
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('bookings');
+  
+  // Review Modal State
+  const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
+  const [reviewBooking, setReviewBooking] = useState<any>(null);
+  const [rating, setRating] = useState(5);
+  const [comment, setComment] = useState('');
+  const [isSubmittingReview, setIsSubmittingReview] = useState(false);
 
   useEffect(() => {
     fetchBookings();
@@ -115,13 +122,39 @@ export const Dashboard = () => {
     }
   };
 
-  const handleRateReview = (bookingId: string) => {
-    alert('Thank you for rating! (Review functionality mocK)');
+  const handleRateReview = (booking: any) => {
+    setReviewBooking(booking);
+    setRating(5);
+    setComment('');
+    setIsReviewModalOpen(true);
+  };
+
+  const submitReview = async () => {
+    if (!reviewBooking) return;
+    setIsSubmittingReview(true);
+    try {
+      await api.post('/reviews', {
+        bookingId: reviewBooking._id,
+        providerId: reviewBooking.provider._id || reviewBooking.provider,
+        rating,
+        comment
+      });
+      setIsReviewModalOpen(false);
+      alert('Thank you for your review!');
+    } catch (error) {
+      console.error(error);
+      alert('Failed to submit review. Please try again.');
+    } finally {
+      setIsSubmittingReview(false);
+    }
   };
 
   const handleAddFavorite = (providerId: string) => {
     alert('Provider added to favorites!');
   };
+
+  const upcomingBookings = bookings.filter((b: any) => ['Pending', 'Accepted'].includes(b.status));
+  const pastBookings = bookings.filter((b: any) => ['Completed', 'Rejected', 'Cancelled'].includes(b.status));
 
   if (!user) return <div className="p-8 text-center text-slate-500 dark:text-slate-400">Please log in.</div>;
 
@@ -211,123 +244,251 @@ export const Dashboard = () => {
             {activeTab === 'analytics' && <AnalyticsPlaceholder />}
 
             {activeTab === 'bookings' && (
-              <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden transition-colors">
-                <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-700 flex justify-between items-center bg-slate-50 dark:bg-slate-800/50">
-                  <h3 className="font-semibold text-slate-800 dark:text-slate-200">Recent Bookings</h3>
-                </div>
-                
-                <div className="divide-y divide-slate-100 dark:divide-slate-700">
-                  {loading ? (
-                    Array.from({ length: 3 }).map((_, i) => (
-                      <div key={i} className="p-6 flex flex-col md:flex-row justify-between gap-6 animate-pulse">
-                         <div className="space-y-3 flex-grow">
-                           <div className="flex items-center gap-3">
-                              <div className="h-6 w-16 bg-slate-200 dark:bg-slate-700 rounded-full"></div>
-                              <div className="h-6 w-48 bg-slate-200 dark:bg-slate-700 rounded"></div>
+              <div className="space-y-6">
+                <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden transition-colors">
+                  <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-700 flex justify-between items-center bg-slate-50 dark:bg-slate-800/50">
+                    <h3 className="font-semibold text-slate-800 dark:text-slate-200">Upcoming Bookings</h3>
+                  </div>
+                  
+                  <div className="divide-y divide-slate-100 dark:divide-slate-700">
+                    {loading ? (
+                      Array.from({ length: 2 }).map((_, i) => (
+                        <div key={i} className="p-6 flex flex-col md:flex-row justify-between gap-6 animate-pulse">
+                           <div className="space-y-3 flex-grow">
+                             <div className="flex items-center gap-3">
+                                <div className="h-6 w-16 bg-slate-200 dark:bg-slate-700 rounded-full"></div>
+                                <div className="h-6 w-48 bg-slate-200 dark:bg-slate-700 rounded"></div>
+                             </div>
+                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-2 gap-x-6">
+                                <div className="h-4 w-32 bg-slate-200 dark:bg-slate-700 rounded"></div>
+                                <div className="h-4 w-40 bg-slate-200 dark:bg-slate-700 rounded"></div>
+                             </div>
                            </div>
-                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-2 gap-x-6">
-                              <div className="h-4 w-32 bg-slate-200 dark:bg-slate-700 rounded"></div>
-                              <div className="h-4 w-40 bg-slate-200 dark:bg-slate-700 rounded"></div>
-                           </div>
-                         </div>
-                         <div className="h-10 w-full md:w-32 bg-slate-200 dark:bg-slate-700 rounded-lg"></div>
-                      </div>
-                    ))
-                  ) : bookings.length > 0 ? (
-                    [...bookings].reverse().map((booking: any) => (
-                      <div key={booking._id} className="p-6 flex flex-col md:flex-row justify-between gap-6 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors">
-                        <div className="space-y-3 flex-grow">
-                          <div className="flex items-center gap-3">
-                            <span className={"text-xs font-semibold px-3 py-1 rounded-full tracking-wide " + getStatusColor(booking.status)}>
-                              {booking.status}
-                            </span>
-                            <h4 className="text-lg font-bold text-slate-900 dark:text-white">{booking.service?.title || 'Home Service'}</h4>
-                          </div>
-                          
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-2 gap-x-6 text-sm text-slate-600 dark:text-slate-400">
-                            <div className="flex items-center gap-2">
-                               <Calendar className="w-4 h-4 text-slate-400 dark:text-slate-500" />
-                               <span>{new Date(booking.date).toLocaleDateString()} at {new Date(booking.date).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
-                            </div>
-                            {user.role === 'Customer' ? (
-                              <div className="flex items-center gap-2">
-                                <User className="w-4 h-4 text-slate-400 dark:text-slate-500" />
-                                <span>Provider: {booking.provider?.name || 'Unknown'}</span>
-                              </div>
-                            ) : (
-                              <div className="flex items-center gap-2">
-                                 <User className="w-4 h-4 text-slate-400 dark:text-slate-500" />
-                                 <span>Customer: {booking.customer?.name || 'Unknown'}</span>
-                              </div>
-                            )}
-                          </div>
+                           <div className="h-10 w-full md:w-32 bg-slate-200 dark:bg-slate-700 rounded-lg"></div>
                         </div>
+                      ))
+                    ) : upcomingBookings.length > 0 ? (
+                      [...upcomingBookings].reverse().map((booking: any) => (
+                        <div key={booking._id} className="p-6 flex flex-col md:flex-row justify-between gap-6 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors">
+                          <div className="space-y-3 flex-grow">
+                            <div className="flex items-center gap-3">
+                              <span className={"text-xs font-semibold px-3 py-1 rounded-full tracking-wide " + getStatusColor(booking.status)}>
+                                {booking.status}
+                              </span>
+                              <h4 className="text-lg font-bold text-slate-900 dark:text-white">{booking.service?.title || 'Home Service'}</h4>
+                            </div>
+                            
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-2 gap-x-6 text-sm text-slate-600 dark:text-slate-400">
+                              <div className="flex items-center gap-2">
+                                 <Calendar className="w-4 h-4 text-slate-400 dark:text-slate-500" />
+                                 <span>{new Date(booking.date).toLocaleDateString()} at {new Date(booking.date).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
+                              </div>
+                              {user.role === 'Customer' ? (
+                                <div className="flex items-center gap-2">
+                                  <User className="w-4 h-4 text-slate-400 dark:text-slate-500" />
+                                  <span>Provider: {booking.provider?.name || 'Unknown'}</span>
+                                </div>
+                              ) : (
+                                <div className="flex items-center gap-2">
+                                   <User className="w-4 h-4 text-slate-400 dark:text-slate-500" />
+                                   <span>Customer: {booking.customer?.name || 'Unknown'}</span>
+                                </div>
+                              )}
+                            </div>
+                          </div>
 
-                        {user.role === 'Provider' && booking.status === 'Pending' && (
-                          <div className="flex gap-2 items-center md:flex-col md:justify-center">
-                            <button 
-                              onClick={() => handleUpdateStatus(booking._id, 'Accepted')}
-                              className="border border-green-600 bg-green-600 text-white hover:bg-green-700 px-5 py-2 rounded-lg font-medium transition-colors w-full shadow-sm"
-                            >
-                              Accept
-                            </button>
-                            <button 
-                              onClick={() => handleUpdateStatus(booking._id, 'Rejected')}
-                              className="border border-red-200 dark:border-red-900/50 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 px-5 py-2 rounded-lg font-medium transition-colors w-full"
-                            >
-                              Reject
-                            </button>
+                          {user.role === 'Provider' && booking.status === 'Pending' && (
+                            <div className="flex gap-2 items-center md:flex-col md:justify-center">
+                              <button 
+                                onClick={() => handleUpdateStatus(booking._id, 'Accepted')}
+                                className="border border-green-600 bg-green-600 text-white hover:bg-green-700 px-5 py-2 rounded-lg font-medium transition-colors w-full shadow-sm"
+                              >
+                                Accept
+                              </button>
+                              <button 
+                                onClick={() => handleUpdateStatus(booking._id, 'Rejected')}
+                                className="border border-red-200 dark:border-red-900/50 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 px-5 py-2 rounded-lg font-medium transition-colors w-full"
+                              >
+                                Reject
+                              </button>
+                            </div>
+                          )}
+                          {user.role === 'Provider' && booking.status === 'Accepted' && (
+                            <div className="flex items-center md:flex-col md:justify-center">
+                              <button 
+                                onClick={() => handleUpdateStatus(booking._id, 'Completed')}
+                                className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded-lg font-medium transition-colors w-full shadow-sm"
+                              >
+                                Mark Completed
+                              </button>
+                            </div>
+                          )}
+                          {user.role === 'Customer' && booking.status === 'Pending' && (
+                            <div className="flex items-center md:flex-col md:justify-center">
+                              <button 
+                                onClick={() => handleUpdateStatus(booking._id, 'Cancelled')}
+                                className="border border-red-200 dark:border-red-900/50 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 px-5 py-2 rounded-lg font-medium transition-colors w-full"
+                              >
+                                Cancel Booking
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      ))
+                    ) : (
+                       <div className="p-10 text-center text-slate-500 dark:text-slate-400">
+                          You don't have any upcoming bookings.
+                       </div>
+                    )}
+                  </div>
+                </div>
+
+                <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden transition-colors">
+                  <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-700 flex justify-between items-center bg-slate-50 dark:bg-slate-800/50">
+                    <h3 className="font-semibold text-slate-800 dark:text-slate-200">Past Bookings</h3>
+                  </div>
+                  
+                  <div className="divide-y divide-slate-100 dark:divide-slate-700">
+                    {loading ? (
+                      Array.from({ length: 2 }).map((_, i) => (
+                        <div key={i} className="p-6 flex flex-col md:flex-row justify-between gap-6 animate-pulse">
+                           <div className="space-y-3 flex-grow">
+                             <div className="flex items-center gap-3">
+                                <div className="h-6 w-16 bg-slate-200 dark:bg-slate-700 rounded-full"></div>
+                                <div className="h-6 w-48 bg-slate-200 dark:bg-slate-700 rounded"></div>
+                             </div>
+                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-2 gap-x-6">
+                                <div className="h-4 w-32 bg-slate-200 dark:bg-slate-700 rounded"></div>
+                                <div className="h-4 w-40 bg-slate-200 dark:bg-slate-700 rounded"></div>
+                             </div>
+                           </div>
+                           <div className="h-10 w-full md:w-32 bg-slate-200 dark:bg-slate-700 rounded-lg"></div>
+                        </div>
+                      ))
+                    ) : pastBookings.length > 0 ? (
+                      [...pastBookings].reverse().map((booking: any) => (
+                        <div key={booking._id} className="p-6 flex flex-col md:flex-row justify-between gap-6 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors">
+                          <div className="space-y-3 flex-grow">
+                            <div className="flex items-center gap-3">
+                              <span className={"text-xs font-semibold px-3 py-1 rounded-full tracking-wide " + getStatusColor(booking.status)}>
+                                {booking.status}
+                              </span>
+                              <h4 className="text-lg font-bold text-slate-900 dark:text-white">{booking.service?.title || 'Home Service'}</h4>
+                            </div>
+                            
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-2 gap-x-6 text-sm text-slate-600 dark:text-slate-400">
+                              <div className="flex items-center gap-2">
+                                 <Calendar className="w-4 h-4 text-slate-400 dark:text-slate-500" />
+                                 <span>{new Date(booking.date).toLocaleDateString()} at {new Date(booking.date).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
+                              </div>
+                              {user.role === 'Customer' ? (
+                                <div className="flex items-center gap-2">
+                                  <User className="w-4 h-4 text-slate-400 dark:text-slate-500" />
+                                  <span>Provider: {booking.provider?.name || 'Unknown'}</span>
+                                </div>
+                              ) : (
+                                <div className="flex items-center gap-2">
+                                   <User className="w-4 h-4 text-slate-400 dark:text-slate-500" />
+                                   <span>Customer: {booking.customer?.name || 'Unknown'}</span>
+                                </div>
+                              )}
+                            </div>
                           </div>
-                        )}
-                        {user.role === 'Provider' && booking.status === 'Accepted' && (
-                          <div className="flex items-center md:flex-col md:justify-center">
-                            <button 
-                              onClick={() => handleUpdateStatus(booking._id, 'Completed')}
-                              className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded-lg font-medium transition-colors w-full shadow-sm"
-                            >
-                              Mark Completed
-                            </button>
-                          </div>
-                        )}
-                        {user.role === 'Customer' && booking.status === 'Completed' && (
-                          <div className="flex gap-2 items-center md:flex-col md:justify-center">
-                            <button 
-                              onClick={() => handleRateReview(booking._id)}
-                              className="flex items-center justify-center gap-1.5 border border-amber-200 dark:border-amber-900/50 text-amber-700 dark:text-amber-500 bg-amber-50 dark:bg-amber-900/20 hover:bg-amber-100 dark:hover:bg-amber-900/40 px-4 py-2 rounded-lg font-medium transition-colors w-full"
-                            >
-                              <Star className="w-4 h-4" /> Rate & Review
-                            </button>
-                            <button 
-                              onClick={() => handleAddFavorite(booking.provider?._id)}
-                              className="flex items-center justify-center gap-1.5 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 px-4 py-2 rounded-lg font-medium transition-colors w-full"
-                            >
-                              <CopyPlus className="w-4 h-4" /> Favorite
-                            </button>
-                          </div>
-                        )}
-                        {user.role === 'Customer' && booking.status === 'Pending' && (
-                          <div className="flex items-center md:flex-col md:justify-center">
-                            <button 
-                              onClick={() => handleUpdateStatus(booking._id, 'Cancelled')}
-                              className="border border-red-200 dark:border-red-900/50 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 px-5 py-2 rounded-lg font-medium transition-colors w-full"
-                            >
-                              Cancel Booking
-                            </button>
-                          </div>
-                        )}
-                      </div>
-                    ))
-                  ) : (
-                     <div className="p-10 text-center text-slate-500 dark:text-slate-400">
-                        You don't have any bookings yet.
-                     </div>
-                  )}
+
+                          {user.role === 'Customer' && booking.status === 'Completed' && (
+                            <div className="flex gap-2 items-center md:flex-col md:justify-center">
+                              <button 
+                                onClick={() => handleRateReview(booking)}
+                                className="flex items-center justify-center gap-1.5 border border-amber-200 dark:border-amber-900/50 text-amber-700 dark:text-amber-500 bg-amber-50 dark:bg-amber-900/20 hover:bg-amber-100 dark:hover:bg-amber-900/40 px-4 py-2 rounded-lg font-medium transition-colors w-full"
+                              >
+                                <Star className="w-4 h-4" /> Rate & Review
+                              </button>
+                              <button 
+                                onClick={() => handleAddFavorite(booking.provider?._id)}
+                                className="flex items-center justify-center gap-1.5 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 px-4 py-2 rounded-lg font-medium transition-colors w-full"
+                              >
+                                <CopyPlus className="w-4 h-4" /> Favorite
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      ))
+                    ) : (
+                       <div className="p-10 text-center text-slate-500 dark:text-slate-400">
+                          You don't have any past bookings.
+                       </div>
+                    )}
+                  </div>
                 </div>
               </div>
             )}
           </motion.div>
         </AnimatePresence>
       </main>
+
+      <AnimatePresence>
+        {isReviewModalOpen && reviewBooking && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="bg-white dark:bg-slate-800 rounded-xl shadow-xl w-full max-w-md overflow-hidden"
+            >
+              <div className="flex justify-between items-center p-6 border-b border-slate-100 dark:border-slate-700">
+                <h3 className="text-xl font-bold text-slate-900 dark:text-white">Rate & Review</h3>
+                <button 
+                  onClick={() => setIsReviewModalOpen(false)}
+                  className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+              <div className="p-6 space-y-6">
+                <div>
+                  <h4 className="font-medium text-slate-900 dark:text-white">{reviewBooking.service?.title}</h4>
+                  <p className="text-sm text-slate-500 dark:text-slate-400">Provider: {reviewBooking.provider?.name}</p>
+                </div>
+                
+                <div className="space-y-2">
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Rating</label>
+                  <div className="flex gap-2">
+                    {[1, 2, 3, 4, 5].map((star) => (
+                      <button 
+                        key={star}
+                        onClick={() => setRating(star)}
+                        className={`p-1 transition-colors ${rating >= star ? 'text-amber-500' : 'text-slate-300 dark:text-slate-600'}`}
+                      >
+                        <Star className="w-8 h-8 fill-current" />
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <label htmlFor="comment" className="block text-sm font-medium text-slate-700 dark:text-slate-300">Feedback</label>
+                  <textarea 
+                    id="comment"
+                    value={comment}
+                    onChange={(e) => setComment(e.target.value)}
+                    placeholder="Tell us about your experience..."
+                    rows={4}
+                    className="w-full px-4 py-2 border border-slate-200 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 placeholder-slate-400"
+                  />
+                </div>
+
+                <button 
+                  onClick={submitReview}
+                  disabled={isSubmittingReview}
+                  className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 rounded-lg transition-colors disabled:opacity-70 disabled:cursor-not-allowed"
+                >
+                  {isSubmittingReview ? 'Submitting...' : 'Submit Review'}
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };

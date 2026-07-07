@@ -55,6 +55,22 @@ export const Home = () => {
   const [activeReview, setActiveReview] = useState(0);
   const [searchQuery, setSearchQuery] = useState('');
   const [locationQuery, setLocationQuery] = useState('');
+  const [showServiceSuggestions, setShowServiceSuggestions] = useState(false);
+  const [showLocationSuggestions, setShowLocationSuggestions] = useState(false);
+
+  const AVAILABLE_SERVICES = [
+    'Deep Home Cleaning', 'AC Installation & Repair', 'Pipe Leak Repair',
+    'Electrical Fixes', 'Painting', 'Pest Control', 'Carpentry', 'Appliance Repair',
+    'Master Plumber', 'House Cleaning', 'Electrician', 'Plumber'
+  ];
+
+  const AVAILABLE_LOCATIONS = [
+    'Chennai', 'Coimbatore', 'Madurai', 'Tiruchirappalli', 'Salem',
+    'Tirunelveli', 'Tiruppur', 'Erode', 'Vellore', 'Thoothukudi', 'Bangalore', 'Hyderabad'
+  ];
+
+  const filteredServices = AVAILABLE_SERVICES.filter(s => s.toLowerCase().includes(searchQuery.toLowerCase()));
+  const filteredLocations = AVAILABLE_LOCATIONS.filter(l => l.toLowerCase().includes(locationQuery.toLowerCase()));
 
   if (!user) {
     return <Navigate to="/login" replace />;
@@ -71,19 +87,21 @@ export const Home = () => {
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-900 transition-colors">
       {/* Hero Section */}
-      <section className="relative pt-16 pb-24 lg:pt-24 lg:pb-32 overflow-hidden">
+      <section className="relative pt-16 pb-24 lg:pt-24 lg:pb-32 z-30">
         {/* Background Decorative Elements */}
-        <div className="absolute inset-x-0 top-0 h-96 bg-gradient-to-b from-blue-600/10 dark:from-blue-600/20 to-transparent pointer-events-none"></div>
-        <motion.div 
-          animate={{ x: [0, 20, 0], y: [0, 30, 0] }}
-          transition={{ duration: 15, repeat: Infinity, ease: "linear" }}
-          className="absolute top-20 right-10 w-64 h-64 bg-green-400/20 dark:bg-green-500/10 rounded-full blur-[80px] pointer-events-none"
-        />
-        <motion.div 
-          animate={{ x: [0, -20, 0], y: [0, -30, 0] }}
-          transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
-          className="absolute bottom-10 left-10 w-72 h-72 bg-blue-600/20 dark:bg-blue-600/10 rounded-full blur-[100px] pointer-events-none"
-        />
+        <div className="absolute inset-0 overflow-hidden pointer-events-none">
+          <div className="absolute inset-x-0 top-0 h-96 bg-gradient-to-b from-blue-600/10 dark:from-blue-600/20 to-transparent pointer-events-none"></div>
+          <motion.div 
+            animate={{ x: [0, 20, 0], y: [0, 30, 0] }}
+            transition={{ duration: 15, repeat: Infinity, ease: "linear" }}
+            className="absolute top-20 right-10 w-64 h-64 bg-green-400/20 dark:bg-green-500/10 rounded-full blur-[80px] pointer-events-none"
+          />
+          <motion.div 
+            animate={{ x: [0, -20, 0], y: [0, -30, 0] }}
+            transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
+            className="absolute bottom-10 left-10 w-72 h-72 bg-blue-600/20 dark:bg-blue-600/10 rounded-full blur-[100px] pointer-events-none"
+          />
+        </div>
       
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
           <div className="text-center max-w-3xl mx-auto">
@@ -109,27 +127,86 @@ export const Home = () => {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.2 }}
-              className="bg-white dark:bg-slate-800 p-2 rounded-2xl shadow-xl shadow-slate-200/50 dark:shadow-none flex flex-col md:flex-row gap-2 max-w-2xl mx-auto border border-slate-100 dark:border-slate-700"
+              className="relative z-40 bg-white dark:bg-slate-800 p-2 rounded-2xl shadow-xl shadow-slate-200/50 dark:shadow-none flex flex-col md:flex-row gap-2 max-w-2xl mx-auto border border-slate-100 dark:border-slate-700"
             >
-              <div className="flex-1 flex items-center px-4 py-2 border-b md:border-b-0 md:border-r border-slate-100 dark:border-slate-700">
-                <Search className="w-5 h-5 text-slate-400 dark:text-slate-500 mr-3" />
-                <input 
-                  type="text" 
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="What service do you need?" 
-                  className="w-full focus:outline-none text-slate-800 dark:text-slate-200 placeholder-slate-400 dark:placeholder-slate-500 bg-transparent"
-                />
-              </div>
-              <div className="flex-1 flex items-center px-4 py-2">
-                <MapPin className="w-5 h-5 text-slate-400 dark:text-slate-500 mr-3" />
-                <input 
-                  type="text" 
-                  value={locationQuery}
-                  onChange={(e) => setLocationQuery(e.target.value)}
-                  placeholder="Your location" 
-                  className="w-full focus:outline-none text-slate-800 dark:text-slate-200 placeholder-slate-400 dark:placeholder-slate-500 bg-transparent"
-                />
+              <div className="flex-1 flex flex-col md:flex-row gap-2 relative">
+                <div className="flex-1 flex items-center px-4 py-2 border-b md:border-b-0 md:border-r border-slate-100 dark:border-slate-700 relative">
+                  <Search className="w-5 h-5 text-slate-400 dark:text-slate-500 mr-3" />
+                  <input 
+                    type="text" 
+                    value={searchQuery}
+                    onChange={(e) => {
+                      setSearchQuery(e.target.value);
+                      setShowServiceSuggestions(true);
+                    }}
+                    onFocus={() => setShowServiceSuggestions(true)}
+                    onBlur={() => setTimeout(() => setShowServiceSuggestions(false), 200)}
+                    placeholder="What service do you need?" 
+                    className="w-full focus:outline-none text-slate-800 dark:text-slate-200 placeholder-slate-400 dark:placeholder-slate-500 bg-transparent"
+                  />
+                  <AnimatePresence>
+                    {showServiceSuggestions && searchQuery.trim().length > 0 && filteredServices.length > 0 && (
+                      <motion.div 
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: 10 }}
+                        className="absolute top-full left-0 right-0 mt-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-lg z-50 overflow-hidden text-left max-h-60 overflow-y-auto"
+                      >
+                        {filteredServices.map((suggestion, idx) => (
+                          <div 
+                            key={idx}
+                            onClick={() => {
+                              setSearchQuery(suggestion);
+                              setShowServiceSuggestions(false);
+                            }}
+                            className="px-4 py-3 hover:bg-slate-50 dark:hover:bg-slate-700 cursor-pointer text-slate-700 dark:text-slate-300 transition-colors"
+                          >
+                            {suggestion}
+                          </div>
+                        ))}
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+                <div className="flex-1 flex items-center px-4 py-2 relative">
+                  <MapPin className="w-5 h-5 text-slate-400 dark:text-slate-500 mr-3" />
+                  <input 
+                    type="text" 
+                    value={locationQuery}
+                    onChange={(e) => {
+                      setLocationQuery(e.target.value);
+                      setShowLocationSuggestions(true);
+                    }}
+                    onFocus={() => setShowLocationSuggestions(true)}
+                    onBlur={() => setTimeout(() => setShowLocationSuggestions(false), 200)}
+                    placeholder="Your location" 
+                    className="w-full focus:outline-none text-slate-800 dark:text-slate-200 placeholder-slate-400 dark:placeholder-slate-500 bg-transparent"
+                  />
+                  <AnimatePresence>
+                    {showLocationSuggestions && locationQuery.trim().length > 0 && filteredLocations.length > 0 && (
+                      <motion.div 
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: 10 }}
+                        className="absolute top-full left-0 right-0 mt-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-lg z-50 overflow-hidden text-left max-h-60 overflow-y-auto"
+                      >
+                        {filteredLocations.map((suggestion, idx) => (
+                          <div 
+                            key={idx}
+                            onClick={() => {
+                              setLocationQuery(suggestion);
+                              setShowLocationSuggestions(false);
+                            }}
+                            className="px-4 py-3 hover:bg-slate-50 dark:hover:bg-slate-700 cursor-pointer text-slate-700 dark:text-slate-300 transition-colors flex items-center gap-2"
+                          >
+                            <MapPin className="w-4 h-4 text-slate-400" />
+                            {suggestion}
+                          </div>
+                        ))}
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
               </div>
               <button type="submit" className="bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 text-white px-8 py-4 rounded-xl font-bold transition-all shadow-md md:w-auto w-full">
                 Search
