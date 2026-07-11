@@ -1,13 +1,24 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import api from '../services/api';
-import { Star, MapPin, Briefcase, Calendar, MessageSquare, ArrowLeft, Image as ImageIcon } from 'lucide-react';
+import { Star, MapPin, Briefcase, Calendar, MessageSquare, ArrowLeft, Image as ImageIcon, X } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
+import { motion, AnimatePresence } from 'motion/react';
 
 export const ProviderProfile = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { user } = useAuth();
+  
   const [provider, setProvider] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+
+  const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
+  const [rating, setRating] = useState(5);
+  const [comment, setComment] = useState('');
+  const [isSubmittingReview, setIsSubmittingReview] = useState(false);
+  const [completedBooking, setCompletedBooking] = useState<any>(null);
+
 
   useEffect(() => {
     const fetchProvider = async () => {
@@ -24,10 +35,97 @@ export const ProviderProfile = () => {
     fetchProvider();
   }, [id]);
 
+  const handleWriteReview = async () => {
+    if (!user) {
+      navigate('/login');
+      return;
+    }
+    if (user.role !== 'Customer') {
+      alert('Only customers can write reviews.');
+      return;
+    }
+    try {
+      const res = await api.get('/bookings');
+      const bookings = Array.isArray(res.data) ? res.data : [];
+      const completed = bookings.find((b: any) => 
+        (b.provider?._id === id || b.provider === id) && b.status === 'Completed'
+      );
+      if (!completed) {
+        alert('You can only review providers after completing a booking with them.');
+        return;
+      }
+      setCompletedBooking(completed);
+      setRating(5);
+      setComment('');
+      setIsReviewModalOpen(true);
+    } catch (err) {
+      console.error(err);
+      alert('Failed to check booking history.');
+    }
+  };
+
+  const submitReview = async () => {
+    if (!completedBooking) return;
+    setIsSubmittingReview(true);
+    try {
+      const newReview = await api.post('/reviews', {
+        bookingId: completedBooking._id,
+        providerId: id,
+        rating,
+        comment
+      });
+      
+      // Update provider locally with the new review
+      setProvider((prev: any) => ({
+        ...prev,
+        reviews: [newReview.data, ...(prev.reviews || [])],
+        reviewCount: (prev.reviewCount || 0) + 1
+      }));
+      
+      setIsReviewModalOpen(false);
+    } catch (error) {
+      console.error(error);
+      alert('Failed to submit review. You may have already reviewed this booking.');
+    } finally {
+      setIsSubmittingReview(false);
+    }
+  };
+
   if (loading) {
     return (
-      <div className="flex justify-center items-center h-96">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 animate-pulse">
+        <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 p-6 md:p-8 mb-8">
+          <div className="flex flex-col md:flex-row gap-8 items-start md:items-center">
+            <div className="w-24 h-24 sm:w-32 sm:h-32 rounded-full bg-slate-200 dark:bg-slate-700 shrink-0"></div>
+            <div className="flex-1 w-full space-y-4">
+              <div className="h-8 w-1/3 bg-slate-200 dark:bg-slate-700 rounded"></div>
+              <div className="flex flex-wrap gap-4">
+                <div className="h-4 w-24 bg-slate-200 dark:bg-slate-700 rounded"></div>
+                <div className="h-4 w-32 bg-slate-200 dark:bg-slate-700 rounded"></div>
+              </div>
+              <div className="h-4 w-full bg-slate-200 dark:bg-slate-700 rounded mt-4"></div>
+              <div className="h-4 w-2/3 bg-slate-200 dark:bg-slate-700 rounded"></div>
+            </div>
+          </div>
+        </div>
+        
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          <div className="lg:col-span-2 space-y-8">
+            <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 p-6">
+              <div className="h-6 w-32 bg-slate-200 dark:bg-slate-700 rounded mb-4"></div>
+              <div className="h-32 w-full bg-slate-200 dark:bg-slate-700 rounded"></div>
+            </div>
+          </div>
+          <div className="space-y-8">
+            <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 p-6">
+              <div className="h-6 w-24 bg-slate-200 dark:bg-slate-700 rounded mb-4"></div>
+              <div className="space-y-4">
+                <div className="h-10 w-full bg-slate-200 dark:bg-slate-700 rounded"></div>
+                <div className="h-10 w-full bg-slate-200 dark:bg-slate-700 rounded"></div>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     );
   }
@@ -118,9 +216,20 @@ export const ProviderProfile = () => {
           
           {/* Reviews Section */}
           <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 p-6 md:p-8">
-            <div className="flex items-center gap-2 mb-6">
-              <MessageSquare className="w-5 h-5 text-blue-600 dark:text-blue-500" />
-              <h3 className="text-xl font-bold text-slate-900 dark:text-white">Client Reviews</h3>
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center gap-2">
+                <MessageSquare className="w-5 h-5 text-blue-600 dark:text-blue-500" />
+                <h3 className="text-xl font-bold text-slate-900 dark:text-white">Client Reviews</h3>
+              </div>
+              {user?.role === 'Customer' && (
+                <motion.button 
+                  whileTap={{ scale: 0.95 }}
+                  onClick={handleWriteReview}
+                  className="bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/40 px-4 py-2 rounded-lg font-medium transition-colors text-sm"
+                >
+                  Write a Review
+                </motion.button>
+              )}
             </div>
             
             <div className="space-y-6">
@@ -196,6 +305,67 @@ export const ProviderProfile = () => {
           </div>
         </div>
       </div>
+
+      {/* Review Modal */}
+      <AnimatePresence>
+        {isReviewModalOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl w-full max-w-md overflow-hidden border border-slate-100 dark:border-slate-700"
+            >
+              <div className="flex justify-between items-center p-6 border-b border-slate-100 dark:border-slate-700">
+                <h3 className="text-xl font-bold text-slate-900 dark:text-white">Rate & Review</h3>
+                <button 
+                  onClick={() => setIsReviewModalOpen(false)}
+                  className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+              <div className="p-6 space-y-6">
+                <div>
+                  <h4 className="font-medium text-slate-900 dark:text-white mb-2">How was your experience?</h4>
+                  <div className="flex gap-2">
+                    {[1, 2, 3, 4, 5].map((star) => (
+                      <button 
+                        key={star}
+                        onClick={() => setRating(star)}
+                        className={`p-1 transition-colors ${rating >= star ? 'text-amber-500' : 'text-slate-300 dark:text-slate-600'}`}
+                      >
+                        <Star className="w-8 h-8 fill-current" />
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">
+                    Share details of your experience (optional)
+                  </label>
+                  <textarea 
+                    value={comment}
+                    onChange={(e) => setComment(e.target.value)}
+                    placeholder="What did they do well? What could be improved?"
+                    className="w-full bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 min-h-[120px] focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all dark:text-white"
+                  />
+                </div>
+
+                <motion.button 
+                  whileTap={{ scale: 0.95 }}
+                  onClick={submitReview}
+                  disabled={isSubmittingReview}
+                  className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 rounded-xl transition-colors shadow-sm disabled:opacity-70 disabled:cursor-not-allowed"
+                >
+                  {isSubmittingReview ? 'Submitting...' : 'Submit Review'}
+                </motion.button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };

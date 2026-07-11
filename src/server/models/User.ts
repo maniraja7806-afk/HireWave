@@ -24,6 +24,7 @@ const userSchema = new mongoose.Schema({
   hourlyCharge: { type: Number },
   averageRating: { type: Number, default: 0 },
   reviewCount: { type: Number, default: 0 },
+  favorites: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
 
   createdAt: { type: Date, default: Date.now }
 });

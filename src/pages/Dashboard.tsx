@@ -1,11 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import api from '../services/api';
 import { useAuth } from '../context/AuthContext';
-import { Calendar, User, Star, CopyPlus, MessageSquare, MapPin, BarChart3, Clock, AlertTriangle, X } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { Calendar, User, Star, CopyPlus, MessageSquare, MapPin, BarChart3, Clock, AlertTriangle, X, ArrowRight } from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
+import { Link } from 'react-router-dom';
 
 const TabButton = ({ active, onClick, icon: Icon, label }: any) => (
-  <button 
+  <motion.button 
+    whileTap={{ scale: 0.95 }}
     onClick={onClick}
     className={`flex items-center gap-2 px-4 py-3 rounded-lg font-medium transition-colors ${
       active 
@@ -15,7 +17,7 @@ const TabButton = ({ active, onClick, icon: Icon, label }: any) => (
   >
     <Icon className="w-5 h-5" />
     <span className="hidden sm:inline">{label}</span>
-  </button>
+  </motion.button>
 );
 
 const ChatPlaceholder = () => (
@@ -84,13 +86,31 @@ export const Dashboard = () => {
   const [comment, setComment] = useState('');
   const [isSubmittingReview, setIsSubmittingReview] = useState(false);
 
+  // Cancel Modal State
+  const [isCancelModalOpen, setIsCancelModalOpen] = useState(false);
+  const [cancelBookingId, setCancelBookingId] = useState<string | null>(null);
+
+  const confirmCancel = async () => {
+    if (cancelBookingId) {
+      await handleUpdateStatus(cancelBookingId, 'Cancelled');
+      setIsCancelModalOpen(false);
+      setCancelBookingId(null);
+    }
+  };
+
+  const [favorites, setFavorites] = useState<any[]>([]);
+  const [loadingFavorites, setLoadingFavorites] = useState(false);
+
   useEffect(() => {
     fetchBookings();
+    if (user?.role === 'Customer') {
+      fetchFavorites();
+    }
     
     // Simple polling for "real-time" mock updates
     const interval = setInterval(fetchBookings, 10000);
     return () => clearInterval(interval);
-  }, []);
+  }, [user]);
 
   const fetchBookings = async () => {
     try {
@@ -100,6 +120,18 @@ export const Dashboard = () => {
       console.error('Error fetching bookings', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchFavorites = async () => {
+    setLoadingFavorites(true);
+    try {
+      const res = await api.get('/users/favorites');
+      setFavorites(Array.isArray(res.data) ? res.data : []);
+    } catch (error) {
+      console.error('Error fetching favorites', error);
+    } finally {
+      setLoadingFavorites(false);
     }
   };
 
@@ -149,8 +181,15 @@ export const Dashboard = () => {
     }
   };
 
-  const handleAddFavorite = (providerId: string) => {
-    alert('Provider added to favorites!');
+  const handleAddFavorite = async (providerId: string) => {
+    try {
+      await api.post(`/users/favorites/${providerId}`);
+      alert('Favorite status updated!');
+      fetchFavorites();
+    } catch (error) {
+      console.error(error);
+      alert('Failed to update favorites.');
+    }
   };
 
   const upcomingBookings = bookings.filter((b: any) => ['Pending', 'Accepted'].includes(b.status));
@@ -193,6 +232,14 @@ export const Dashboard = () => {
                icon={MapPin} 
                label="Live Tracking" 
              />
+             {user.role === 'Customer' && (
+               <TabButton 
+                 active={activeTab === 'favorites'} 
+                 onClick={() => setActiveTab('favorites')} 
+                 icon={Star} 
+                 label="My Favorites" 
+               />
+             )}
              {user.role === 'Admin' && (
                <TabButton 
                  active={activeTab === 'analytics'} 
@@ -206,9 +253,9 @@ export const Dashboard = () => {
          
          {/* Emergency Action */}
          {user.role === 'Customer' && (
-           <button className="w-full bg-red-600 hover:bg-red-700 text-white rounded-xl shadow-lg p-4 flex items-center justify-center gap-2 font-bold transition-transform hover:scale-[1.02]">
+           <motion.button whileTap={{ scale: 0.95 }} className="w-full bg-red-600 hover:bg-red-700 text-white rounded-xl shadow-lg p-4 flex items-center justify-center gap-2 font-bold transition-transform hover:scale-[1.02]">
              <AlertTriangle className="w-5 h-5" /> Emergency SOS
-           </button>
+           </motion.button>
          )}
       </aside>
 
@@ -221,12 +268,14 @@ export const Dashboard = () => {
               {activeTab === 'chat' && 'Messages'}
               {activeTab === 'map' && 'Live GPS Tracking'}
               {activeTab === 'analytics' && 'System Analytics'}
+              {activeTab === 'favorites' && 'My Favorites'}
             </h2>
             <p className="text-slate-600 dark:text-slate-400">
                {activeTab === 'bookings' && `Here's an overview of your recent activity.`}
                {activeTab === 'chat' && 'Communicate instantly with service providers.'}
                {activeTab === 'map' && 'Track technicians arriving at your location.'}
                {activeTab === 'analytics' && 'Platform performance and revenue monitoring.'}
+               {activeTab === 'favorites' && 'Your preferred service providers.'}
             </p>
           </div>
         </div>
@@ -242,6 +291,74 @@ export const Dashboard = () => {
             {activeTab === 'chat' && <ChatPlaceholder />}
             {activeTab === 'map' && <MapPlaceholder />}
             {activeTab === 'analytics' && <AnalyticsPlaceholder />}
+            
+            {activeTab === 'favorites' && (
+              <div className="space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {loadingFavorites ? (
+                    Array.from({ length: 2 }).map((_, i) => (
+                      <div key={i} className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 p-6 animate-pulse">
+                        <div className="flex items-center gap-4 mb-4">
+                          <div className="w-16 h-16 rounded-full bg-slate-200 dark:bg-slate-700"></div>
+                          <div className="space-y-2 flex-1">
+                            <div className="h-5 bg-slate-200 dark:bg-slate-700 rounded w-1/2"></div>
+                            <div className="h-4 bg-slate-200 dark:bg-slate-700 rounded w-1/3"></div>
+                          </div>
+                        </div>
+                        <div className="h-10 bg-slate-200 dark:bg-slate-700 rounded-lg w-full"></div>
+                      </div>
+                    ))
+                  ) : favorites.length > 0 ? (
+                    favorites.map((provider: any) => (
+                      <div key={provider._id} className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 p-6 hover:shadow-md transition-all flex flex-col h-full">
+                        <div className="flex items-center gap-4 mb-4">
+                          <div className="w-16 h-16 rounded-full bg-slate-100 dark:bg-slate-700 overflow-hidden shrink-0 flex items-center justify-center font-bold text-xl text-blue-600 dark:text-blue-400">
+                             {provider.profileImage ? (
+                               <img src={provider.profileImage} alt={provider.name} className="w-full h-full object-cover" />
+                             ) : (
+                               provider.name?.charAt(0) || 'P'
+                             )}
+                          </div>
+                          <div>
+                            <h3 className="font-bold text-lg text-slate-900 dark:text-white line-clamp-1">{provider.name}</h3>
+                            <p className="text-sm text-slate-500 dark:text-slate-400">{provider.category || 'Service Provider'}</p>
+                            <div className="flex items-center gap-1 mt-1 text-sm font-medium text-slate-600 dark:text-slate-300">
+                              <Star className="w-4 h-4 text-amber-500 fill-amber-500" />
+                              {provider.averageRating?.toFixed(1) || '4.0'}
+                            </div>
+                          </div>
+                        </div>
+                        <div className="mt-auto pt-4 flex gap-3">
+                          <Link 
+                            to={`/provider/${provider._id}`} 
+                            className="flex-1 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/40 text-center py-2.5 rounded-lg font-medium transition-colors"
+                          >
+                            View Profile
+                          </Link>
+                          <motion.button 
+                            whileTap={{ scale: 0.95 }}
+                            onClick={() => handleAddFavorite(provider._id)}
+                            className="px-4 bg-red-50 hover:bg-red-100 dark:bg-red-900/20 dark:hover:bg-red-900/40 text-red-600 dark:text-red-400 rounded-lg transition-colors border border-red-200 dark:border-red-900/50"
+                            title="Remove from favorites"
+                          >
+                            <X className="w-5 h-5" />
+                          </motion.button>
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="col-span-full py-16 text-center text-slate-500 dark:text-slate-400 bg-white dark:bg-slate-800/50 rounded-xl border border-slate-100 dark:border-slate-700 shadow-sm transition-colors">
+                       <Star className="w-12 h-12 text-slate-300 dark:text-slate-600 mx-auto mb-4" />
+                       <p className="text-lg font-medium text-slate-900 dark:text-white mb-2">No favorites yet</p>
+                       <p className="text-sm max-w-sm mx-auto mb-6">You haven't added any service providers to your favorites. Explore services to find professionals you like.</p>
+                       <Link to="/services" className="inline-flex items-center gap-2 px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-xl shadow-sm transition-colors">
+                         Find Services <ArrowRight className="w-4 h-4" />
+                       </Link>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
 
             {activeTab === 'bookings' && (
               <div className="space-y-6">
@@ -299,38 +416,44 @@ export const Dashboard = () => {
 
                           {user.role === 'Provider' && booking.status === 'Pending' && (
                             <div className="flex gap-2 items-center md:flex-col md:justify-center">
-                              <button 
+                              <motion.button whileTap={{ scale: 0.95 }}
                                 onClick={() => handleUpdateStatus(booking._id, 'Accepted')}
                                 className="border border-green-600 bg-green-600 text-white hover:bg-green-700 px-5 py-2 rounded-lg font-medium transition-colors w-full shadow-sm"
                               >
                                 Accept
-                              </button>
-                              <button 
+                              </motion.button>
+                              <motion.button whileTap={{ scale: 0.95 }}
                                 onClick={() => handleUpdateStatus(booking._id, 'Rejected')}
                                 className="border border-red-200 dark:border-red-900/50 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 px-5 py-2 rounded-lg font-medium transition-colors w-full"
                               >
                                 Reject
-                              </button>
+                              </motion.button>
                             </div>
                           )}
                           {user.role === 'Provider' && booking.status === 'Accepted' && (
                             <div className="flex items-center md:flex-col md:justify-center">
-                              <button 
+                              <motion.button whileTap={{ scale: 0.95 }}
                                 onClick={() => handleUpdateStatus(booking._id, 'Completed')}
                                 className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded-lg font-medium transition-colors w-full shadow-sm"
                               >
                                 Mark Completed
-                              </button>
+                              </motion.button>
                             </div>
                           )}
                           {user.role === 'Customer' && booking.status === 'Pending' && (
                             <div className="flex items-center md:flex-col md:justify-center">
-                              <button 
-                                onClick={() => handleUpdateStatus(booking._id, 'Cancelled')}
+                              <motion.button whileTap={{ scale: 0.95 }}
+                                type="button"
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  setCancelBookingId(booking._id);
+                                  setIsCancelModalOpen(true);
+                                }}
                                 className="border border-red-200 dark:border-red-900/50 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 px-5 py-2 rounded-lg font-medium transition-colors w-full"
                               >
                                 Cancel Booking
-                              </button>
+                              </motion.button>
                             </div>
                           )}
                         </div>
@@ -397,18 +520,18 @@ export const Dashboard = () => {
 
                           {user.role === 'Customer' && booking.status === 'Completed' && (
                             <div className="flex gap-2 items-center md:flex-col md:justify-center">
-                              <button 
+                              <motion.button whileTap={{ scale: 0.95 }}
                                 onClick={() => handleRateReview(booking)}
                                 className="flex items-center justify-center gap-1.5 border border-amber-200 dark:border-amber-900/50 text-amber-700 dark:text-amber-500 bg-amber-50 dark:bg-amber-900/20 hover:bg-amber-100 dark:hover:bg-amber-900/40 px-4 py-2 rounded-lg font-medium transition-colors w-full"
                               >
                                 <Star className="w-4 h-4" /> Rate & Review
-                              </button>
-                              <button 
+                              </motion.button>
+                              <motion.button whileTap={{ scale: 0.95 }}
                                 onClick={() => handleAddFavorite(booking.provider?._id)}
                                 className="flex items-center justify-center gap-1.5 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 px-4 py-2 rounded-lg font-medium transition-colors w-full"
                               >
                                 <CopyPlus className="w-4 h-4" /> Favorite
-                              </button>
+                              </motion.button>
                             </div>
                           )}
                         </div>
@@ -427,6 +550,54 @@ export const Dashboard = () => {
       </main>
 
       <AnimatePresence>
+        {isCancelModalOpen && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4">
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="bg-white dark:bg-slate-800 rounded-xl shadow-xl w-full max-w-sm overflow-hidden border border-slate-200 dark:border-slate-700"
+            >
+              <div className="flex justify-between items-center p-6 border-b border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50">
+                <h3 className="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                   <AlertTriangle className="w-5 h-5 text-red-500" /> Cancel Booking
+                </h3>
+                <button 
+                  onClick={() => {
+                    setIsCancelModalOpen(false);
+                    setCancelBookingId(null);
+                  }}
+                  className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+              <div className="p-6">
+                <p className="text-slate-600 dark:text-slate-300 mb-6">Are you sure you want to cancel this booking? This action cannot be undone.</p>
+                <div className="flex gap-3">
+                  <motion.button 
+                    whileTap={{ scale: 0.95 }}
+                    onClick={() => {
+                      setIsCancelModalOpen(false);
+                      setCancelBookingId(null);
+                    }}
+                    className="flex-1 px-4 py-2.5 bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 font-medium rounded-lg hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors"
+                  >
+                    Keep It
+                  </motion.button>
+                  <motion.button 
+                    whileTap={{ scale: 0.95 }}
+                    onClick={confirmCancel}
+                    className="flex-1 px-4 py-2.5 bg-red-600 text-white font-medium rounded-lg hover:bg-red-700 transition-colors shadow-sm"
+                  >
+                    Yes, Cancel
+                  </motion.button>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+
         {isReviewModalOpen && reviewBooking && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
             <motion.div 
@@ -477,13 +648,13 @@ export const Dashboard = () => {
                   />
                 </div>
 
-                <button 
+                <motion.button whileTap={{ scale: 0.95 }}
                   onClick={submitReview}
                   disabled={isSubmittingReview}
                   className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 rounded-lg transition-colors disabled:opacity-70 disabled:cursor-not-allowed"
                 >
                   {isSubmittingReview ? 'Submitting...' : 'Submit Review'}
-                </button>
+                </motion.button>
               </div>
             </motion.div>
           </div>

@@ -75,26 +75,40 @@ export const getMyBookings = async (req: AuthRequest, res: Response) => {
 
 export const updateBookingStatus = async (req: AuthRequest, res: Response) => {
   try {
-    if (!req.user || req.user.role !== 'Provider') {
-      return res.status(403).json({ message: 'Not authorized to update status' });
+    if (!req.user) {
+      return res.status(401).json({ message: 'Not authorized' });
     }
 
     const { status } = req.body;
+    
+    if (req.user.role === 'Customer' && status !== 'Cancelled') {
+      return res.status(403).json({ message: 'Customers can only cancel bookings' });
+    }
 
     if (mongoose.connection.readyState !== 1) {
       const booking = db.bookings.find(b => b._id.toString() === req.params.id);
       if (!booking) return res.status(404).json({ message: 'Booking not found' });
+      
+      if (req.user.role === 'Customer' && booking.customer._id?.toString() !== req.user.id && booking.customer.toString() !== req.user.id) {
+         return res.status(403).json({ message: 'Not authorized to update this booking' });
+      }
+      if (req.user.role === 'Provider' && booking.provider._id?.toString() !== req.user.id && booking.provider.toString() !== req.user.id) {
+         return res.status(403).json({ message: 'Not authorized to update this booking' });
+      }
+
       booking.status = status;
       return res.json(booking);
     }
 
     const booking = await Booking.findById(req.params.id);
-
     if (!booking) {
       return res.status(404).json({ message: 'Booking not found' });
     }
 
-    if (booking.provider.toString() !== req.user.id) {
+    if (req.user.role === 'Customer' && booking.customer.toString() !== req.user.id) {
+       return res.status(403).json({ message: 'Not authorized to update this booking' });
+    }
+    if (req.user.role === 'Provider' && booking.provider.toString() !== req.user.id) {
        return res.status(403).json({ message: 'Not authorized to update this booking' });
     }
 

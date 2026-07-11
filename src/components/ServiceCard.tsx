@@ -1,18 +1,30 @@
 import React from 'react';
-import { Star, MapPin, Clock, Award, CheckCircle } from 'lucide-react';
+import { motion } from 'motion/react';
+import { Star, MapPin, Clock, Award, CheckCircle, Heart } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 interface ServiceCardProps {
   service: any;
   onBook?: () => void;
+  isFavorite?: boolean;
+  onToggleFavorite?: () => void;
 }
 
-export const ServiceCard: React.FC<ServiceCardProps> = ({ service, onBook }) => {
+export const ServiceCard: React.FC<ServiceCardProps> = ({ service, onBook, isFavorite, onToggleFavorite }) => {
   const provider = service.provider || {};
   const providerId = provider._id || provider;
   
   return (
-    <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 p-6 transition-all hover:shadow-md flex flex-col h-full">
+    <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 p-6 transition-all hover:shadow-md flex flex-col h-full relative">
+      {onToggleFavorite && (
+        <button 
+          onClick={(e) => { e.preventDefault(); onToggleFavorite(); }}
+          className="absolute top-4 right-4 p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors z-10 group"
+          title={isFavorite ? "Remove from favorites" : "Add to favorites"}
+        >
+          <Heart className={`w-5 h-5 transition-colors ${isFavorite ? 'fill-red-500 text-red-500' : 'text-slate-400 group-hover:text-red-500'}`} />
+        </button>
+      )}
       <div className="flex flex-col sm:flex-row gap-5 mb-5 items-start">
         <Link to={`/provider/${providerId}`} className="flex-shrink-0">
           {provider.profileImage ? (
@@ -78,12 +90,13 @@ export const ServiceCard: React.FC<ServiceCardProps> = ({ service, onBook }) => 
         </div>
         
         {onBook && (
-          <button 
+          <motion.button 
+            whileTap={{ scale: 0.95 }}
             onClick={onBook}
             className="bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 text-white px-6 py-2.5 rounded-lg font-semibold transition-all shadow-sm focus:ring-2 focus:ring-offset-1 focus:ring-blue-500"
           >
             Book Appointment
-          </button>
+          </motion.button>
         )}
       </div>
     </div>

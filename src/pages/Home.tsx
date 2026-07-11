@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { Navigate, Link, useNavigate } from 'react-router-dom';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence } from 'motion/react';
 import { Search, MapPin, Star, Shield, Zap, Wrench, Home as HomeIcon, Droplet, ZapIcon, Grid, ThumbsUp, Activity, Users, CheckCircle, ChevronRight, ChevronLeft } from 'lucide-react';
 
 const categories = [
@@ -59,14 +59,25 @@ export const Home = () => {
   const [showLocationSuggestions, setShowLocationSuggestions] = useState(false);
 
   const AVAILABLE_SERVICES = [
-    'Deep Home Cleaning', 'AC Installation & Repair', 'Pipe Leak Repair',
-    'Electrical Fixes', 'Painting', 'Pest Control', 'Carpentry', 'Appliance Repair',
-    'Master Plumber', 'House Cleaning', 'Electrician', 'Plumber'
+    'AC Technician',
+    'Refrigerator Repair',
+    'Washing Machine Repair',
+    'Microwave Repair',
+    'Television Repair',
+    'Water Purifier Service',
+    'Electrician',
+    'Plumber',
+    'Home Appliance Installation',
+    'General Appliance Maintenance'
   ];
 
   const AVAILABLE_LOCATIONS = [
-    'Chennai', 'Coimbatore', 'Madurai', 'Tiruchirappalli', 'Salem',
-    'Tirunelveli', 'Tiruppur', 'Erode', 'Vellore', 'Thoothukudi', 'Bangalore', 'Hyderabad'
+    'Chennai', 'Coimbatore', 'Madurai', 'Tiruchirappalli', 'Salem', 'Tirunelveli', 'Erode',
+    'Vellore', 'Thanjavur', 'Dindigul', 'Kanchipuram', 'Karur', 'Namakkal', 'Cuddalore',
+    'Thoothukudi', 'Virudhunagar', 'Kanniyakumari', 'Krishnagiri', 'Dharmapuri', 'Sivagangai',
+    'Ramanathapuram', 'Ariyalur', 'Perambalur', 'Tenkasi', 'Nilgiris', 'Tiruppur', 'Mayiladuthurai',
+    'Ranipet', 'Tirupathur', 'Chengalpattu', 'Kallakurichi', 'Nagapattinam', 'Pudukottai',
+    'Villupuram', 'Thiruvarur'
   ];
 
   const filteredServices = AVAILABLE_SERVICES.filter(s => s.toLowerCase().includes(searchQuery.toLowerCase()));
@@ -208,9 +219,9 @@ export const Home = () => {
                   </AnimatePresence>
                 </div>
               </div>
-              <button type="submit" className="bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 text-white px-8 py-4 rounded-xl font-bold transition-all shadow-md md:w-auto w-full">
+              <motion.button whileTap={{ scale: 0.95 }} type="submit" className="bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 text-white px-8 py-4 rounded-xl font-bold transition-all shadow-md md:w-auto w-full">
                 Search
-              </button>
+              </motion.button>
             </motion.form>
           </div>
         </div>
@@ -364,12 +375,12 @@ export const Home = () => {
           </div>
           
           <div className="flex justify-center gap-4 mt-12">
-            <button onClick={prevReview} className="p-3 rounded-full bg-white/10 hover:bg-white/20 transition-colors">
+            <motion.button whileTap={{ scale: 0.95 }} onClick={prevReview} className="p-3 rounded-full bg-white/10 hover:bg-white/20 transition-colors">
               <ChevronLeft className="w-6 h-6" />
-            </button>
-            <button onClick={nextReview} className="p-3 rounded-full bg-white/10 hover:bg-white/20 transition-colors">
+            </motion.button>
+            <motion.button whileTap={{ scale: 0.95 }} onClick={nextReview} className="p-3 rounded-full bg-white/10 hover:bg-white/20 transition-colors">
               <ChevronRight className="w-6 h-6" />
-            </button>
+            </motion.button>
           </div>
         </div>
       </section>

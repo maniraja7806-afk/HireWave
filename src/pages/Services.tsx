@@ -1,9 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
 import api from '../services/api';
 import { ServiceCard } from '../components/ServiceCard';
-import { Search, MapPin } from 'lucide-react';
+import { Search, MapPin, SearchX, TrendingUp } from 'lucide-react';
+import { motion } from 'motion/react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
 const CATEGORIES = [
   'AC Technician',
@@ -38,11 +40,16 @@ export const Services = () => {
   const initialCategory = searchParams.get('category') || '';
 
   const [services, setServices] = useState([]);
+  const [favoriteIds, setFavoriteIds] = useState<string[]>([]);
   const [search, setSearch] = useState(initialSearch);
   const [category, setCategory] = useState(initialCategory);
   const [location, setLocation] = useState(initialLocation);
   const [loading, setLoading] = useState(true);
   
+  const [trends, setTrends] = useState<any[]>([]);
+  const [showTrends, setShowTrends] = useState(false);
+  const [loadingTrends, setLoadingTrends] = useState(false);
+
   const [selectedService, setSelectedService] = useState<any>(null);
   const [bookingDate, setBookingDate] = useState('');
   const [bookingTime, setBookingTime] = useState('');
@@ -57,6 +64,38 @@ export const Services = () => {
 
   const { user } = useAuth();
   const navigate = useNavigate();
+
+  useEffect(() => {
+    if (user?.role === 'Customer') {
+      fetchFavorites();
+    }
+  }, [user]);
+
+  const fetchFavorites = async () => {
+    try {
+      const res = await api.get('/users/favorites');
+      if (Array.isArray(res.data)) {
+        setFavoriteIds(res.data.map((fav: any) => fav._id));
+      }
+    } catch (error) {
+      console.error('Failed to fetch favorites', error);
+    }
+  };
+
+  const handleToggleFavorite = async (providerId: string) => {
+    if (!user) {
+      navigate('/login');
+      return;
+    }
+    try {
+      await api.post(`/users/favorites/${providerId}`);
+      setFavoriteIds(prev => 
+        prev.includes(providerId) ? prev.filter(id => id !== providerId) : [...prev, providerId]
+      );
+    } catch (error) {
+      console.error('Failed to toggle favorite', error);
+    }
+  };
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -83,28 +122,26 @@ export const Services = () => {
 
   useEffect(() => {
     if (search.trim()) {
-      const match = search.toLowerCase();
-      const catMatches = CATEGORIES.filter(cat => cat.toLowerCase().includes(match));
-      const keyMatches = SEARCH_KEYWORDS.filter(key => key.toLowerCase().includes(match));
+      const fetchSuggestions = async () => {
+        try {
+          const res = await api.get(`/services/suggestions?q=${encodeURIComponent(search)}`);
+          if (Array.isArray(res.data) && res.data.length > 0) {
+            setSearchSuggestions(res.data);
+          } else {
+            // fallback to local categories if no results from backend
+            const match = search.toLowerCase();
+            const catMatches = CATEGORIES.filter(cat => cat.toLowerCase().includes(match));
+            setSearchSuggestions(catMatches);
+          }
+        } catch (error) {
+          const match = search.toLowerCase();
+          const catMatches = CATEGORIES.filter(cat => cat.toLowerCase().includes(match));
+          setSearchSuggestions(catMatches);
+        }
+      };
       
-      // Basic fuzzy match attempt if no direct matches
-      if (catMatches.length === 0 && keyMatches.length === 0) {
-        const fuzzyCatMatches = CATEGORIES.filter(cat => {
-          const chars = match.split('');
-          let catLower = cat.toLowerCase();
-          return chars.every(char => {
-             const idx = catLower.indexOf(char);
-             if(idx > -1) {
-               catLower = catLower.slice(idx + 1);
-               return true;
-             }
-             return false;
-          });
-        });
-        setSearchSuggestions(fuzzyCatMatches);
-      } else {
-        setSearchSuggestions([...catMatches, ...keyMatches]);
-      }
+      const timer = setTimeout(fetchSuggestions, 300);
+      return () => clearTimeout(timer);
     } else {
       setSearchSuggestions(CATEGORIES);
     }
@@ -135,6 +172,26 @@ export const Services = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const fetchTrends = async () => {
+    if (trends.length > 0) return;
+    setLoadingTrends(true);
+    try {
+      const res = await api.get('/services/trends');
+      setTrends(Array.isArray(res.data) ? res.data : []);
+    } catch (error) {
+      console.error('Failed to fetch trends', error);
+    } finally {
+      setLoadingTrends(false);
+    }
+  };
+
+  const toggleTrends = () => {
+    if (!showTrends) {
+      fetchTrends();
+    }
+    setShowTrends(!showTrends);
   };
 
   const handleOpenBooking = (service: any) => {
@@ -190,6 +247,13 @@ export const Services = () => {
         </div>
         
         <div className="flex flex-col sm:flex-row gap-3 w-full lg:w-auto">
+          <button
+            onClick={toggleTrends}
+            className="flex items-center gap-2 px-5 py-2.5 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 font-medium rounded-lg hover:bg-blue-100 dark:hover:bg-blue-900/40 transition-colors"
+          >
+            <TrendingUp className="w-5 h-5" />
+            {showTrends ? 'Hide Price Trends' : 'View Price Trends'}
+          </button>
           <div className="relative w-full sm:w-64" ref={locationRef}>
             <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 dark:text-slate-500" />
             <input 
@@ -222,17 +286,6 @@ export const Services = () => {
             )}
           </div>
           
-          <select 
-            value={category} 
-            onChange={(e) => setCategory(e.target.value)}
-            className="w-full sm:w-48 px-4 py-2.5 border border-slate-200 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 transition-colors"
-          >
-            <option value="">All Categories</option>
-            {CATEGORIES.map(cat => (
-              <option key={cat} value={cat}>{cat}</option>
-            ))}
-          </select>
-
           <div className="relative w-full sm:w-64" ref={searchRef}>
              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 dark:text-slate-500" />
              <input 
@@ -266,6 +319,88 @@ export const Services = () => {
         </div>
       </div>
 
+      <div className="flex gap-3 overflow-x-auto pb-4 mb-4 scrollbar-hide">
+        <button
+          onClick={() => setCategory('')}
+          className={`shrink-0 px-5 py-2 rounded-full font-medium transition-colors border ${
+            category === '' 
+              ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 border-transparent shadow-sm' 
+              : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700'
+          }`}
+        >
+          All
+        </button>
+        {CATEGORIES.map(cat => (
+          <button
+            key={cat}
+            onClick={() => setCategory(cat)}
+            className={`shrink-0 px-5 py-2 rounded-full font-medium transition-colors border ${
+              category === cat
+                ? 'bg-blue-600 text-white border-transparent shadow-sm'
+                : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700'
+            }`}
+          >
+            {cat}
+          </button>
+        ))}
+      </div>
+
+      {showTrends && (
+        <motion.div 
+          initial={{ opacity: 0, height: 0 }}
+          animate={{ opacity: 1, height: 'auto' }}
+          className="mb-10 bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 p-6 overflow-hidden"
+        >
+          <div className="mb-6">
+            <h3 className="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
+              <TrendingUp className="w-5 h-5 text-blue-500" /> Average Pricing by Category
+            </h3>
+            <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">Estimate the base cost of typical services</p>
+          </div>
+          
+          <div className="w-full h-[300px]">
+            {loadingTrends ? (
+              <div className="w-full h-full flex items-center justify-center animate-pulse">
+                <div className="flex items-end gap-4 h-48 w-full justify-center opacity-50">
+                   {[40, 70, 50, 90, 60].map((h, i) => (
+                     <div key={i} className="w-16 bg-slate-200 dark:bg-slate-700 rounded-t-sm" style={{ height: `${h}%`}}></div>
+                   ))}
+                </div>
+              </div>
+            ) : trends.length > 0 ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={trends} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
+                  <XAxis 
+                    dataKey="category" 
+                    axisLine={false} 
+                    tickLine={false} 
+                    tick={{ fontSize: 12, fill: '#64748b' }} 
+                    tickFormatter={(val) => val.split(' ')[0]} 
+                  />
+                  <YAxis 
+                    axisLine={false} 
+                    tickLine={false} 
+                    tick={{ fontSize: 12, fill: '#64748b' }}
+                    tickFormatter={(value) => `₹${value}`}
+                  />
+                  <Tooltip 
+                    cursor={{ fill: 'rgba(148, 163, 184, 0.1)' }}
+                    contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                    formatter={(value) => [`₹${value}`, 'Average Price']}
+                  />
+                  <Bar dataKey="avgPrice" fill="#3b82f6" radius={[4, 4, 0, 0]} maxBarSize={60} />
+                </BarChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="w-full h-full flex items-center justify-center text-slate-500">
+                No pricing data available.
+              </div>
+            )}
+          </div>
+        </motion.div>
+      )}
+
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {loading ? (
           Array.from({ length: 4 }).map((_, i) => (
@@ -283,14 +418,38 @@ export const Services = () => {
           ))
         ) : services.length > 0 ? (
           services.map((service: any) => (
-            <ServiceCard key={service._id} service={service} onBook={() => handleOpenBooking(service)} />
+            <ServiceCard 
+              key={service._id} 
+              service={service} 
+              onBook={() => handleOpenBooking(service)} 
+              isFavorite={favoriteIds.includes(service.provider?._id || service.provider)}
+              onToggleFavorite={() => handleToggleFavorite(service.provider?._id || service.provider)}
+            />
           ))
         ) : (
-          <div className="col-span-full py-20 text-center text-slate-500 dark:text-slate-400 bg-white dark:bg-slate-800/50 rounded-xl border border-slate-100 dark:border-slate-700 shadow-sm transition-colors">
-             <MapPin className="w-12 h-12 text-slate-300 dark:text-slate-600 mx-auto mb-4" />
-             <p className="text-lg font-medium text-slate-900 dark:text-white">No providers found in this area.</p>
-             <p className="text-sm mt-1">Try expanding your search or changing the location.</p>
-          </div>
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="col-span-full py-24 px-6 text-center text-slate-500 dark:text-slate-400 bg-white dark:bg-slate-800/30 rounded-2xl border border-slate-100 dark:border-slate-700/50 shadow-sm transition-colors flex flex-col items-center justify-center min-h-[400px]"
+          >
+             <div className="relative mb-6">
+                <div className="absolute inset-0 bg-blue-100 dark:bg-blue-900/20 rounded-full blur-xl scale-150 opacity-50"></div>
+                <div className="w-20 h-20 bg-slate-50 dark:bg-slate-800 rounded-full flex items-center justify-center border-4 border-white dark:border-slate-700 shadow-sm relative z-10">
+                  <SearchX className="w-10 h-10 text-slate-400 dark:text-slate-500" />
+                </div>
+             </div>
+             <h3 className="text-xl font-semibold text-slate-900 dark:text-white mb-2">No results found</h3>
+             <p className="text-base max-w-md mx-auto mb-8">We couldn't find any services matching your criteria. Try adjusting your filters or search terms.</p>
+             <div className="flex gap-4">
+                <motion.button 
+                  whileTap={{ scale: 0.95 }}
+                  onClick={() => { setSearch(''); setLocation(''); setCategory(''); }}
+                  className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-xl shadow-sm transition-colors"
+                >
+                  Clear Filters
+                </motion.button>
+             </div>
+          </motion.div>
         )}
       </div>
 
@@ -336,19 +495,21 @@ export const Services = () => {
             </div>
             
             <div className="mt-8 border-t border-slate-100 dark:border-slate-700 pt-4 flex justify-end gap-3 transition-colors">
-              <button 
+              <motion.button 
+                 whileTap={{ scale: 0.95 }}
                  onClick={() => setSelectedService(null)}
                  className="px-5 py-2.5 text-slate-600 dark:text-slate-300 font-medium hover:bg-slate-50 dark:hover:bg-slate-700 rounded-lg transition-colors"
               >
                 Cancel
-              </button>
-              <button 
+              </motion.button>
+              <motion.button 
+                 whileTap={{ scale: 0.95 }}
                  onClick={handleBook}
                  disabled={!bookingDate || !bookingTime}
                  className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-medium rounded-lg shadow-sm transition-colors"
               >
                 Confirm Booking
-              </button>
+              </motion.button>
             </div>
           </div>
         </div>

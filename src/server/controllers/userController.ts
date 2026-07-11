@@ -73,3 +73,73 @@ export const getProviderProfile = async (req: Request, res: Response) => {
     res.status(500).json({ message: 'Server error', error });
   }
 };
+
+import { AuthRequest } from '../middleware/authMiddleware.js';
+
+export const toggleFavorite = async (req: AuthRequest, res: Response) => {
+  try {
+    const { id } = req.params;
+    const userId = req.user?.id;
+
+    if (!userId) return res.status(401).json({ message: 'Not authorized' });
+
+    if (mongoose.connection.readyState !== 1) {
+      const user = db.users.find(u => u._id.toString() === userId);
+      if (!user) return res.json([]);
+      
+      if (!user.favorites) user.favorites = [];
+      const index = user.favorites.findIndex((favId: string) => favId.toString() === id);
+      
+      if (index === -1) {
+        user.favorites.push(id);
+      } else {
+        user.favorites.splice(index, 1);
+      }
+      return res.json({ favorites: user.favorites });
+    }
+
+    const user = await User.findById(userId);
+    if (!user) return res.json([]);
+
+    const favorites = user.favorites || [];
+    const index = favorites.indexOf(id as any);
+    
+    if (index === -1) {
+      favorites.push(id as any);
+    } else {
+      favorites.splice(index, 1);
+    }
+    
+    user.favorites = favorites;
+    await user.save();
+    
+    res.json({ favorites: user.favorites });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error', error });
+  }
+};
+
+export const getFavorites = async (req: AuthRequest, res: Response) => {
+  try {
+    const userId = req.user?.id;
+    if (!userId) return res.status(401).json({ message: 'Not authorized' });
+
+    if (mongoose.connection.readyState !== 1) {
+      const user = db.users.find(u => u._id.toString() === userId);
+      if (!user) return res.json([]);
+      
+      const favoritesList = (user.favorites || []).map((favId: string) => {
+         return db.users.find(u => u._id.toString() === favId.toString());
+      }).filter(Boolean);
+      
+      return res.json(favoritesList);
+    }
+
+    const user = await User.findById(userId).populate('favorites', '-password');
+    if (!user) return res.json([]);
+
+    res.json(user.favorites || []);
+  } catch (error) {
+    res.status(500).json({ message: 'Server error', error });
+  }
+};

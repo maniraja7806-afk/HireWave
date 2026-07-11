@@ -17,7 +17,14 @@ import Login from './pages/Login';
 import Register from './pages/Register';
 import { Home } from './pages/Home';
 
-const NotificationManager = ({ setUnreadCount }: { setUnreadCount: (c: (prev: number) => number) => void }) => {
+export interface AppNotification {
+  id: string;
+  message: string;
+  read: boolean;
+  timestamp: Date;
+}
+
+const NotificationManager = ({ addNotification }: { addNotification: (msg: string) => void }) => {
   const { user } = useAuth();
   const prevBookingsRef = useRef<any[]>([]);
 
@@ -32,20 +39,16 @@ const NotificationManager = ({ setUnreadCount }: { setUnreadCount: (c: (prev: nu
         const currentBookings = response.data;
         
         if (prevBookingsRef.current.length > 0) {
-           let newNotifications = 0;
            currentBookings.forEach((currentBooking: any) => {
              const prevBooking = prevBookingsRef.current.find((b: any) => b._id === currentBooking._id);
              if (prevBooking && prevBooking.status === 'Pending' && (currentBooking.status === 'Accepted' || currentBooking.status === 'Confirmed')) {
                 if (user.role === 'Customer') {
-                  toast.success(`Booking Confirmed: ${currentBooking.service?.title || 'Home Service'}`, { icon: '✅' });
-                  newNotifications++;
+                  const msg = `Booking Confirmed: ${currentBooking.service?.title || 'Home Service'}`;
+                  toast.success(msg, { icon: '✅' });
+                  addNotification(msg);
                 }
              }
            });
-           
-           if (newNotifications > 0) {
-             setUnreadCount((prev: number) => prev + newNotifications);
-           }
         }
         
         prevBookingsRef.current = currentBookings;
@@ -64,10 +67,12 @@ const NotificationManager = ({ setUnreadCount }: { setUnreadCount: (c: (prev: nu
       isMounted = false;
       clearInterval(intervalId);
     };
-  }, [user, setUnreadCount]);
+  }, [user, addNotification]);
 
   return null;
 };
+
+import { motion } from 'motion/react';
 
 const PageHeader = () => {
   const navigate = useNavigate();
@@ -84,13 +89,13 @@ const PageHeader = () => {
   return (
     <div className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-md sticky top-[73px] z-40 border-b border-slate-200 dark:border-slate-800">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex items-center gap-4">
-        <button 
+        <motion.button whileTap={{ scale: 0.95 }}
           onClick={() => navigate(-1)}
           className="px-3 py-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 transition-colors flex items-center gap-2 font-medium text-sm"
           title="Go Back"
         >
           <ArrowLeft className="w-4 h-4" /> Back
-        </button>
+        </motion.button>
 
         <div className="h-4 w-px bg-slate-300 dark:bg-slate-700"></div>
 
@@ -127,10 +132,12 @@ const PageHeader = () => {
   );
 };
 
-const Navbar = ({ toggleTheme, isDark, unreadCount, setUnreadCount }: any) => {
+const Navbar = ({ toggleTheme, isDark, notifications, setNotifications }: any) => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+  const [showNotifications, setShowNotifications] = useState(false);
+  const unreadCount = notifications ? notifications.filter((n: any) => !n.read).length : 0;
 
   // Hide Top Nav on Login & Register for cleaner look, optional.
   if (['/login', '/register'].includes(location.pathname)) {
@@ -143,8 +150,10 @@ const Navbar = ({ toggleTheme, isDark, unreadCount, setUnreadCount }: any) => {
   };
   
   const handleBellClick = () => {
-    setUnreadCount(0);
-    navigate('/dashboard');
+    setShowNotifications(!showNotifications);
+    if (!showNotifications && setNotifications) {
+      setNotifications((prev: any) => prev.map((n: any) => ({ ...n, read: true })));
+    }
   };
   
   return (
@@ -154,21 +163,44 @@ const Navbar = ({ toggleTheme, isDark, unreadCount, setUnreadCount }: any) => {
         HireWave
       </Link>
       <div className="flex gap-4 md:gap-6 items-center">
-        <button onClick={toggleTheme} className="p-2 rounded-full text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200 transition-colors">
+        <motion.button whileTap={{ scale: 0.95 }} onClick={toggleTheme} className="p-2 rounded-full text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200 transition-colors">
           {isDark ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
-        </button>
+        </motion.button>
         <Link to="/services" className="hidden sm:block text-slate-600 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400 font-medium transition-colors">Find Services</Link>
         {user ? (
           <>
-            <button onClick={handleBellClick} className="relative p-2 rounded-full text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200 transition-colors">
-              <Bell className="w-5 h-5" />
-              {unreadCount > 0 && (
-                <span className="absolute top-1.5 right-2 w-2 h-2 bg-red-500 rounded-full border-2 border-white dark:border-slate-900"></span>
+            <div className="relative">
+              <motion.button whileTap={{ scale: 0.95 }} onClick={handleBellClick} className="relative p-2 rounded-full text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200 transition-colors">
+                <Bell className="w-5 h-5" />
+                {unreadCount > 0 && (
+                  <span className="absolute top-1.5 right-2 w-2 h-2 bg-red-500 rounded-full border-2 border-white dark:border-slate-900"></span>
+                )}
+              </motion.button>
+              {showNotifications && (
+                <div className="absolute right-0 mt-2 w-72 md:w-80 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-xl py-2 z-50 overflow-hidden">
+                  <div className="px-4 py-2 font-semibold border-b border-slate-100 dark:border-slate-700 text-slate-800 dark:text-slate-200">
+                    Notifications
+                  </div>
+                  <div className="max-h-64 overflow-y-auto">
+                    {!notifications || notifications.length === 0 ? (
+                      <div className="px-4 py-6 text-center text-sm text-slate-500">
+                        No notifications
+                      </div>
+                    ) : (
+                      notifications.map((n: any) => (
+                        <div key={n.id} className="px-4 py-3 hover:bg-slate-50 dark:hover:bg-slate-700/50 border-b border-slate-100 dark:border-slate-700/50 last:border-0 transition-colors">
+                          <p className="text-sm text-slate-800 dark:text-slate-200">{n.message}</p>
+                          <p className="text-xs text-slate-500 mt-1">{new Date(n.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</p>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
               )}
-            </button>
+            </div>
             <Link to="/dashboard" className="hidden sm:block text-slate-600 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400 font-medium transition-colors">Dashboard</Link>
             <div className="hidden sm:block h-6 w-px bg-slate-200 dark:bg-slate-700 mx-1"></div>
-            <button onClick={handleLogout} className="text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 font-medium transition-colors">Logout</button>
+            <motion.button whileTap={{ scale: 0.95 }} onClick={handleLogout} className="text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 font-medium transition-colors">Logout</motion.button>
           </>
         ) : (
           <>
@@ -217,7 +249,14 @@ const BottomNav = () => {
 
 const Layout = ({ children }: { children: React.ReactNode }) => {
   const [isDark, setIsDark] = useState(false);
-  const [unreadCount, setUnreadCount] = useState(0);
+  const [notifications, setNotifications] = useState<AppNotification[]>([]);
+
+  const addNotification = (msg: string) => {
+    setNotifications(prev => [
+      { id: Date.now().toString(), message: msg, read: false, timestamp: new Date() },
+      ...prev
+    ]);
+  };
 
   useEffect(() => {
     if (isDark) {
@@ -230,8 +269,8 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
   return (
     <div className={`min-h-screen flex flex-col font-sans bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-slate-100 transition-colors pb-16 md:pb-0`}>
       <Router>
-        <NotificationManager setUnreadCount={setUnreadCount} />
-        <Navbar toggleTheme={() => setIsDark(!isDark)} isDark={isDark} unreadCount={unreadCount} setUnreadCount={setUnreadCount} />
+        <NotificationManager addNotification={addNotification} />
+        <Navbar toggleTheme={() => setIsDark(!isDark)} isDark={isDark} notifications={notifications} setNotifications={setNotifications} />
         <PageHeader />
         {children}
         <BottomNav />
