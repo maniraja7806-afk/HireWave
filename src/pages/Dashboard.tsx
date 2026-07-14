@@ -4,12 +4,13 @@ import { useAuth } from '../context/AuthContext';
 import { Calendar, User, Star, CopyPlus, MessageSquare, MapPin, BarChart3, Clock, AlertTriangle, X, ArrowRight } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Link } from 'react-router-dom';
+import { toast } from 'react-hot-toast';
 
 const TabButton = ({ active, onClick, icon: Icon, label }: any) => (
-  <motion.button 
-    whileTap={{ scale: 0.95 }}
-    onClick={onClick}
-    className={`flex items-center gap-2 px-4 py-3 rounded-lg font-medium transition-colors ${
+  <button 
+    type="button"
+    onClick={(e) => { e.preventDefault(); onClick(); }}
+    className={`flex items-center gap-2 px-4 py-3 rounded-lg font-medium transition-all active:scale-95 ${
       active 
         ? 'bg-blue-600 text-white shadow-sm' 
         : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
@@ -17,16 +18,66 @@ const TabButton = ({ active, onClick, icon: Icon, label }: any) => (
   >
     <Icon className="w-5 h-5" />
     <span className="hidden sm:inline">{label}</span>
-  </motion.button>
+  </button>
 );
 
-const ChatPlaceholder = () => (
-  <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 p-8 text-center flex flex-col items-center justify-center min-h-[400px]">
-    <MessageSquare className="w-16 h-16 text-slate-300 dark:text-slate-600 mb-4" />
-    <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-2">In-App Chat</h3>
-    <p className="text-slate-500 dark:text-slate-400 max-w-md">Connect with your service provider or customer securely. Share images of appliance issues and discuss details here.</p>
-  </div>
-);
+const ChatPlaceholder = () => {
+  const [msg, setMsg] = useState('');
+  const [messages, setMessages] = useState([
+    { id: 1, sender: 'system', text: 'Welcome to the chat!' }
+  ]);
+
+  return (
+    <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 p-6 flex flex-col min-h-[400px]">
+      <div className="border-b border-slate-200 dark:border-slate-700 pb-4 mb-4">
+        <h3 className="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
+          <MessageSquare className="w-5 h-5 text-blue-500" /> Messages
+        </h3>
+      </div>
+      <div className="flex-1 overflow-y-auto space-y-4 mb-4">
+        {messages.map(m => (
+          <div key={m.id} className={`flex ${m.sender === 'user' ? 'justify-end' : 'justify-start'}`}>
+            <div className={`px-4 py-2 rounded-lg max-w-[80%] ${m.sender === 'user' ? 'bg-blue-600 text-white' : 'bg-slate-100 dark:bg-slate-700 text-slate-900 dark:text-white'}`}>
+              {m.text}
+            </div>
+          </div>
+        ))}
+      </div>
+      <div className="flex gap-2">
+        <input 
+          type="text" 
+          value={msg} 
+          onChange={(e) => setMsg(e.target.value)} 
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' && msg.trim()) {
+              setMessages([...messages, { id: Date.now(), sender: 'user', text: msg }]);
+              setMsg('');
+              setTimeout(() => {
+                setMessages(prev => [...prev, { id: Date.now(), sender: 'system', text: 'The other person is currently unavailable.' }]);
+              }, 1000);
+            }
+          }}
+          className="flex-1 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-4 py-2 focus:outline-none focus:border-blue-500"
+          placeholder="Type a message..."
+        />
+        <button 
+          onClick={() => {
+            if (msg.trim()) {
+              setMessages([...messages, { id: Date.now(), sender: 'user', text: msg }]);
+              setMsg('');
+              setTimeout(() => {
+                setMessages(prev => [...prev, { id: Date.now(), sender: 'system', text: 'The other person is currently unavailable.' }]);
+              }, 1000);
+            }
+          }}
+          className="bg-blue-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-blue-700"
+        >
+          Send
+        </button>
+      </div>
+    </div>
+  );
+};
 
 const MapPlaceholder = () => (
   <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden min-h-[400px] flex flex-col">
@@ -253,9 +304,13 @@ export const Dashboard = () => {
          
          {/* Emergency Action */}
          {user.role === 'Customer' && (
-           <motion.button whileTap={{ scale: 0.95 }} className="w-full bg-red-600 hover:bg-red-700 text-white rounded-xl shadow-lg p-4 flex items-center justify-center gap-2 font-bold transition-transform hover:scale-[1.02]">
+           <button 
+             type="button" 
+             onClick={(e) => { e.preventDefault(); toast.success('Emergency Services have been notified of your location. A representative will contact you immediately.', { duration: 5000, icon: '🚨' }); }} 
+             className="w-full bg-red-600 hover:bg-red-700 text-white rounded-xl shadow-lg p-4 flex items-center justify-center gap-2 font-bold transition-transform hover:scale-[1.02] active:scale-95"
+           >
              <AlertTriangle className="w-5 h-5" /> Emergency SOS
-           </motion.button>
+           </button>
          )}
       </aside>
 
@@ -335,14 +390,14 @@ export const Dashboard = () => {
                           >
                             View Profile
                           </Link>
-                          <motion.button 
-                            whileTap={{ scale: 0.95 }}
+                          <button 
+                            
                             onClick={() => handleAddFavorite(provider._id)}
                             className="px-4 bg-red-50 hover:bg-red-100 dark:bg-red-900/20 dark:hover:bg-red-900/40 text-red-600 dark:text-red-400 rounded-lg transition-colors border border-red-200 dark:border-red-900/50"
                             title="Remove from favorites"
                           >
                             <X className="w-5 h-5" />
-                          </motion.button>
+                          </button>
                         </div>
                       </div>
                     ))
@@ -416,33 +471,33 @@ export const Dashboard = () => {
 
                           {user.role === 'Provider' && booking.status === 'Pending' && (
                             <div className="flex gap-2 items-center md:flex-col md:justify-center">
-                              <motion.button whileTap={{ scale: 0.95 }}
+                              <button 
                                 onClick={() => handleUpdateStatus(booking._id, 'Accepted')}
                                 className="border border-green-600 bg-green-600 text-white hover:bg-green-700 px-5 py-2 rounded-lg font-medium transition-colors w-full shadow-sm"
                               >
                                 Accept
-                              </motion.button>
-                              <motion.button whileTap={{ scale: 0.95 }}
+                              </button>
+                              <button 
                                 onClick={() => handleUpdateStatus(booking._id, 'Rejected')}
                                 className="border border-red-200 dark:border-red-900/50 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 px-5 py-2 rounded-lg font-medium transition-colors w-full"
                               >
                                 Reject
-                              </motion.button>
+                              </button>
                             </div>
                           )}
                           {user.role === 'Provider' && booking.status === 'Accepted' && (
                             <div className="flex items-center md:flex-col md:justify-center">
-                              <motion.button whileTap={{ scale: 0.95 }}
+                              <button 
                                 onClick={() => handleUpdateStatus(booking._id, 'Completed')}
                                 className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded-lg font-medium transition-colors w-full shadow-sm"
                               >
                                 Mark Completed
-                              </motion.button>
+                              </button>
                             </div>
                           )}
                           {user.role === 'Customer' && booking.status === 'Pending' && (
                             <div className="flex items-center md:flex-col md:justify-center">
-                              <motion.button whileTap={{ scale: 0.95 }}
+                              <button 
                                 type="button"
                                 onClick={(e) => {
                                   e.preventDefault();
@@ -453,7 +508,7 @@ export const Dashboard = () => {
                                 className="border border-red-200 dark:border-red-900/50 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 px-5 py-2 rounded-lg font-medium transition-colors w-full"
                               >
                                 Cancel Booking
-                              </motion.button>
+                              </button>
                             </div>
                           )}
                         </div>
@@ -520,18 +575,18 @@ export const Dashboard = () => {
 
                           {user.role === 'Customer' && booking.status === 'Completed' && (
                             <div className="flex gap-2 items-center md:flex-col md:justify-center">
-                              <motion.button whileTap={{ scale: 0.95 }}
+                              <button 
                                 onClick={() => handleRateReview(booking)}
                                 className="flex items-center justify-center gap-1.5 border border-amber-200 dark:border-amber-900/50 text-amber-700 dark:text-amber-500 bg-amber-50 dark:bg-amber-900/20 hover:bg-amber-100 dark:hover:bg-amber-900/40 px-4 py-2 rounded-lg font-medium transition-colors w-full"
                               >
                                 <Star className="w-4 h-4" /> Rate & Review
-                              </motion.button>
-                              <motion.button whileTap={{ scale: 0.95 }}
+                              </button>
+                              <button 
                                 onClick={() => handleAddFavorite(booking.provider?._id)}
                                 className="flex items-center justify-center gap-1.5 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 px-4 py-2 rounded-lg font-medium transition-colors w-full"
                               >
                                 <CopyPlus className="w-4 h-4" /> Favorite
-                              </motion.button>
+                              </button>
                             </div>
                           )}
                         </div>
@@ -575,8 +630,8 @@ export const Dashboard = () => {
               <div className="p-6">
                 <p className="text-slate-600 dark:text-slate-300 mb-6">Are you sure you want to cancel this booking? This action cannot be undone.</p>
                 <div className="flex gap-3">
-                  <motion.button 
-                    whileTap={{ scale: 0.95 }}
+                  <button 
+                    
                     onClick={() => {
                       setIsCancelModalOpen(false);
                       setCancelBookingId(null);
@@ -584,14 +639,14 @@ export const Dashboard = () => {
                     className="flex-1 px-4 py-2.5 bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 font-medium rounded-lg hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors"
                   >
                     Keep It
-                  </motion.button>
-                  <motion.button 
-                    whileTap={{ scale: 0.95 }}
+                  </button>
+                  <button 
+                    
                     onClick={confirmCancel}
                     className="flex-1 px-4 py-2.5 bg-red-600 text-white font-medium rounded-lg hover:bg-red-700 transition-colors shadow-sm"
                   >
                     Yes, Cancel
-                  </motion.button>
+                  </button>
                 </div>
               </div>
             </motion.div>
@@ -648,13 +703,13 @@ export const Dashboard = () => {
                   />
                 </div>
 
-                <motion.button whileTap={{ scale: 0.95 }}
+                <button 
                   onClick={submitReview}
                   disabled={isSubmittingReview}
                   className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 rounded-lg transition-colors disabled:opacity-70 disabled:cursor-not-allowed"
                 >
                   {isSubmittingReview ? 'Submitting...' : 'Submit Review'}
-                </motion.button>
+                </button>
               </div>
             </motion.div>
           </div>
