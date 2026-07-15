@@ -1,4 +1,5 @@
-@import "tailwindcss";
+with open("src/index.css", "w") as f:
+    f.write("""@import "tailwindcss";
 @custom-variant dark (&:is(.dark *));
 
 html, body {
@@ -21,3 +22,5 @@ input::-webkit-credentials-auto-fill-button {
   .scrollbar-hide::-webkit-scrollbar { display: none; } 
   .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
 }
+""")
+print("Done")

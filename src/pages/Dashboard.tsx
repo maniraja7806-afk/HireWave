@@ -1,3 +1,4 @@
+import { getCategoryIcon } from './Services';
 import React, { useEffect, useState } from 'react';
 import api from '../services/api';
 import { useAuth } from '../context/AuthContext';
@@ -376,7 +377,12 @@ export const Dashboard = () => {
                           </div>
                           <div>
                             <h3 className="font-bold text-lg text-slate-900 dark:text-white line-clamp-1">{provider.name}</h3>
-                            <p className="text-sm text-slate-500 dark:text-slate-400">{provider.category || 'Service Provider'}</p>
+                            <div className="flex items-center gap-1.5 mt-1">
+                              <span className="text-slate-400 dark:text-slate-500">
+                                {getCategoryIcon(provider.category || '')}
+                              </span>
+                              <p className="text-sm text-slate-500 dark:text-slate-400">{provider.category || 'Service Provider'}</p>
+                            </div>
                             <div className="flex items-center gap-1 mt-1 text-sm font-medium text-slate-600 dark:text-slate-300">
                               <Star className="w-4 h-4 text-amber-500 fill-amber-500" />
                               {provider.averageRating?.toFixed(1) || '4.0'}

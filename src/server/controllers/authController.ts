@@ -7,7 +7,7 @@ import { db } from '../inMemoryDb.js';
 
 export const registerUser = async (req: Request, res: Response) => {
   try {
-    const { name, username, email, password, role, city, area, pincode, address } = req.body;
+    const { name, username, email, password, role, city, area, pincode, address, category } = req.body;
 
     if (mongoose.connection.readyState !== 1) {
       const userExists = db.users.find(u => u.email === email || (u.username && u.username === username));
@@ -19,7 +19,7 @@ export const registerUser = async (req: Request, res: Response) => {
       const newUser = {
         _id: new mongoose.Types.ObjectId().toString(),
         name, username, email, password: hashedPassword, role: role || 'Customer',
-        city, area, pincode, address,
+        city, area, pincode, address, category,
         createdAt: new Date()
       };
       db.users.push(newUser);
@@ -48,7 +48,7 @@ export const registerUser = async (req: Request, res: Response) => {
       email,
       password: hashedPassword,
       role: role || 'Customer',
-      city, area, pincode, address
+      city, area, pincode, address, category
     });
 
     if (user) {

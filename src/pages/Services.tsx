@@ -7,6 +7,21 @@ import { useAuth } from '../context/AuthContext';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
+export const getCategoryIcon = (category: string) => {
+  const cat = (category || '').toLowerCase();
+  if (cat.includes('ac ')) return <Wind className="w-4 h-4" />;
+  if (cat.includes('refrigerator')) return <Fan className="w-4 h-4" />;
+  if (cat.includes('washing machine')) return <Droplets className="w-4 h-4" />;
+  if (cat.includes('microwave')) return <Zap className="w-4 h-4" />;
+  if (cat.includes('television') || cat.includes('tv')) return <Tv className="w-4 h-4" />;
+  if (cat.includes('water purifier')) return <Droplet className="w-4 h-4" />;
+  if (cat.includes('electrician')) return <Lightbulb className="w-4 h-4" />;
+  if (cat.includes('plumber')) return <Wrench className="w-4 h-4" />;
+  if (cat.includes('pest')) return <Bug className="w-4 h-4" />;
+  if (cat.includes('cleaning')) return <Sparkles className="w-4 h-4" />;
+  return <Settings className="w-4 h-4" />;
+};
+
 const CATEGORIES = [
   'AC Technician',
   'Refrigerator Repair',
@@ -42,6 +57,21 @@ export const Services = () => {
   const [services, setServices] = useState([]);
   const [favoriteIds, setFavoriteIds] = useState<string[]>([]);
   const [search, setSearch] = useState(initialSearch);
+  const [recentSearches, setRecentSearches] = useState<string[]>(() => {
+    const saved = localStorage.getItem('recentSearches');
+    return saved ? JSON.parse(saved) : [];
+  });
+
+  const saveRecentSearch = (query: string) => {
+    if (!query || !query.trim()) return;
+    const q = query.trim();
+    setRecentSearches(prev => {
+      const filtered = prev.filter(item => item.toLowerCase() !== q.toLowerCase());
+      const newSearches = [q, ...filtered].slice(0, 5);
+      localStorage.setItem('recentSearches', JSON.stringify(newSearches));
+      return newSearches;
+    });
+  };
   const [category, setCategory] = useState(initialCategory);
   const [location, setLocation] = useState(initialLocation);
   const [loading, setLoading] = useState(true);
@@ -296,6 +326,12 @@ export const Services = () => {
                  setSearch(e.target.value);
                  setShowSearchSuggestions(true);
                }}
+               onKeyDown={(e) => {
+                 if (e.key === 'Enter') {
+                   saveRecentSearch(search);
+                   setShowSearchSuggestions(false);
+                 }
+               }}
                onFocus={() => setShowSearchSuggestions(true)}
                className="w-full pl-10 pr-4 py-2.5 border border-slate-200 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 transition-colors"
              />
@@ -307,6 +343,7 @@ export const Services = () => {
                     className="px-4 py-3 hover:bg-slate-50 dark:hover:bg-slate-700 cursor-pointer text-slate-700 dark:text-slate-300 transition-colors"
                     onClick={() => {
                       setSearch(suggestion);
+                      saveRecentSearch(suggestion);
                       setShowSearchSuggestions(false);
                     }}
                   >
@@ -317,7 +354,26 @@ export const Services = () => {
             )}
           </div>
         </div>
+        
       </div>
+
+      {recentSearches.length > 0 && (
+         <div className="flex flex-wrap gap-2 items-center text-sm mb-6 -mt-4">
+            <span className="text-slate-500 dark:text-slate-400 font-medium">Recent:</span>
+            {recentSearches.map((s, i) => (
+              <button
+                key={i}
+                onClick={() => {
+                  setSearch(s);
+                  saveRecentSearch(s);
+                }}
+                className="px-3 py-1.5 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-full hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
+              >
+                {s}
+              </button>
+            ))}
+         </div>
+      )}
 
       <div className="flex gap-3 overflow-x-auto pb-4 mb-4 scrollbar-hide">
         <button
@@ -334,12 +390,13 @@ export const Services = () => {
           <button
             key={cat}
             onClick={() => setCategory(cat)}
-            className={`shrink-0 px-5 py-2 rounded-full font-medium transition-colors border ${
+            className={`shrink-0 px-5 py-2 rounded-full font-medium transition-colors border flex items-center gap-2 ${
               category === cat
                 ? 'bg-blue-600 text-white border-transparent shadow-sm'
                 : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700'
             }`}
           >
+            {getCategoryIcon(cat)}
             {cat}
           </button>
         ))}

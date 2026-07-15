@@ -250,6 +250,7 @@ const BottomNav = () => {
 const Layout = ({ children }: { children: React.ReactNode }) => {
   const [isDark, setIsDark] = useState(false);
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
+  const location = useLocation();
 
   const addNotification = (msg: string) => {
     setNotifications(prev => [
@@ -266,16 +267,16 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
     }
   }, [isDark]);
 
+  const isAuthPage = ['/login', '/register'].includes(location.pathname);
+
   return (
-    <div className={`min-h-screen flex flex-col font-sans bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-slate-100 transition-colors pb-16 md:pb-0`}>
-      <Router>
-        <NotificationManager addNotification={addNotification} />
-        <Navbar toggleTheme={() => setIsDark(!isDark)} isDark={isDark} notifications={notifications} setNotifications={setNotifications} />
-        <PageHeader />
-        {children}
-        <BottomNav />
-        <Toaster position="top-center" toastOptions={{ duration: 4000, style: { background: isDark ? '#1e293b' : '#333', color: '#fff' } }} />
-      </Router>
+    <div className={`min-h-screen flex flex-col font-sans bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-slate-100 transition-colors ${isAuthPage ? '' : 'pb-16 md:pb-0'}`}>
+      <NotificationManager addNotification={addNotification} />
+      <Navbar toggleTheme={() => setIsDark(!isDark)} isDark={isDark} notifications={notifications} setNotifications={setNotifications} />
+      <PageHeader />
+      {children}
+      <BottomNav />
+      <Toaster position="top-center" toastOptions={{ duration: 4000, style: { background: isDark ? '#1e293b' : '#333', color: '#fff' } }} />
     </div>
   );
 };
@@ -283,16 +284,18 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
 export default function App() {
   return (
     <AuthProvider>
-      <Layout>
-        <Routes>
-          <Route path="/" element={<Home />} />
-          <Route path="/services" element={<Services />} />
-          <Route path="/provider/:id" element={<ProviderProfile />} />
-          <Route path="/login" element={<Login />} />
-          <Route path="/register" element={<Register />} />
-          <Route path="/dashboard" element={<Dashboard />} />
-        </Routes>
-      </Layout>
+      <Router>
+        <Layout>
+          <Routes>
+            <Route path="/" element={<Home />} />
+            <Route path="/services" element={<Services />} />
+            <Route path="/provider/:id" element={<ProviderProfile />} />
+            <Route path="/login" element={<Login />} />
+            <Route path="/register" element={<Register />} />
+            <Route path="/dashboard" element={<Dashboard />} />
+          </Routes>
+        </Layout>
+      </Router>
     </AuthProvider>
   );
 }
