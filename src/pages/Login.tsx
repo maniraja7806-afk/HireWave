@@ -17,8 +17,16 @@ const Login = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email.trim() || !password.trim()) {
-      toast.error('Email and password cannot be empty!');
+    if (!email.trim() && !password.trim()) {
+      toast.error('Invalid username/email or password.');
+      return;
+    }
+    if (!email.trim()) {
+      toast.error('Please enter your username or email.');
+      return;
+    }
+    if (!password.trim()) {
+      toast.error('Please enter your password.');
       return;
     }
     
@@ -27,7 +35,7 @@ const Login = () => {
       const res = await api.post('/auth/login', { email, password });
       login(res.data.token, { id: res.data._id, name: res.data.name, role: res.data.role });
       toast.success(`Welcome back, ${res.data.name}!`);
-      navigate('/');
+      navigate('/dashboard');
     } catch (err: any) {
       toast.error(err.response?.data?.message || 'Failed to login');
     } finally {
@@ -77,7 +85,10 @@ const Login = () => {
             </div>
             
             <div>
-              <label className="block text-sm font-medium text-slate-200 mb-2">Password</label>
+              <div className="flex justify-between items-center mb-2">
+                <label className="block text-sm font-medium text-slate-200">Password</label>
+                <a href="#" className="text-sm font-medium text-blue-400 hover:text-blue-300 transition-colors">Forgot Password?</a>
+              </div>
               <div className="relative">
                 <input
                   type={showPassword ? "text" : "password"}

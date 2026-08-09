@@ -30,6 +30,8 @@ const Register = () => {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [role, setRole] = useState(defaultRole);
   const [category, setCategory] = useState('');
+  const [experience, setExperience] = useState('');
+  const [hourlyCharge, setHourlyCharge] = useState('');
   
   const [city, setCity] = useState('');
   const [area, setArea] = useState('');
@@ -43,6 +45,20 @@ const Register = () => {
   
   const { login } = useAuth();
   const navigate = useNavigate();
+
+  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const raw = e.target.value.replace(/\D/g, '');
+    let formatted = raw.slice(0, 10);
+    if (formatted.length > 5) {
+      formatted = `${formatted.slice(0, 5)} ${formatted.slice(5)}`;
+    }
+    setPhone(formatted);
+  };
+
+  const handlePincodeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const raw = e.target.value.replace(/\D/g, '');
+    setPincode(raw.slice(0, 6));
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -61,12 +77,24 @@ const Register = () => {
 
     setLoading(true);
     try {
-      const res = await api.post('/auth/register', { 
-        name, username, email, password, role, city, area, pincode, address, phoneNumber: phone 
+      await api.post('/auth/register', { 
+        name, 
+        username, 
+        email, 
+        password, 
+        role,
+        city, 
+        area, 
+        pincode, 
+        address, 
+        phoneNumber: phone,
+        category: role === 'Provider' ? category : undefined,
+        experience: role === 'Provider' ? Number(experience) : undefined,
+        hourlyCharge: role === 'Provider' ? Number(hourlyCharge) : undefined
       });
-      login(res.data.token, { id: res.data._id, name: res.data.name, role: res.data.role });
-      toast.success('Account created successfully!');
-      navigate('/');
+      
+      toast.success('Account created successfully! Please login.');
+      navigate('/login');
     } catch (err: any) {
       toast.error(err.response?.data?.message || 'Failed to register');
     } finally {
@@ -145,7 +173,7 @@ const Register = () => {
                 <input
                   type="tel"
                   value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
+                  onChange={handlePhoneChange}
                   className="block w-full px-4 py-3 bg-slate-800/50 border border-slate-600/50 rounded-xl text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all sm:text-sm"
                   placeholder="+91 98765 43210"
                 />
@@ -168,6 +196,13 @@ const Register = () => {
                     {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
                 </div>
+                {password.length > 0 && (
+                  <div className="mt-2 flex gap-1">
+                    <div className={`h-1 flex-1 rounded-full ${password.length > 0 ? (password.length >= 8 ? 'bg-green-500' : 'bg-red-500') : 'bg-slate-700'}`}></div>
+                    <div className={`h-1 flex-1 rounded-full ${password.length >= 8 && /[A-Z]/.test(password) ? 'bg-green-500' : 'bg-slate-700'}`}></div>
+                    <div className={`h-1 flex-1 rounded-full ${password.length >= 8 && /[0-9!@#$%^&*]/.test(password) ? 'bg-green-500' : 'bg-slate-700'}`}></div>
+                  </div>
+                )}
               </div>
               <div>
                 <label className="block text-sm font-medium text-slate-200 mb-1">Confirm Password *</label>
@@ -205,7 +240,7 @@ const Register = () => {
                   <input
                     type="text"
                     value={pincode}
-                    onChange={(e) => setPincode(e.target.value)}
+                    onChange={handlePincodeChange}
                     className="block w-full px-4 py-3 bg-slate-800/50 border border-slate-600/50 rounded-xl text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-sm"
                     placeholder="e.g. 10001"
                   />
@@ -249,18 +284,47 @@ const Register = () => {
 
             {role === 'Provider' && (
               <div className="pt-4 border-t border-white/10 mt-4">
-                <label className="block text-sm font-medium text-slate-200 mb-1">Type of Service Provided</label>
-                <select
-                  value={category}
-                  onChange={(e) => setCategory(e.target.value)}
-                  className="block w-full px-4 py-3 bg-slate-800/50 border border-slate-600/50 rounded-xl text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-sm appearance-none"
-                  required
-                >
-                  <option value="" disabled>Select a service type...</option>
-                  {CATEGORIES.map(cat => (
-                    <option key={cat} value={cat}>{cat}</option>
-                  ))}
-                </select>
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-slate-200 mb-1">Type of Service Provided *</label>
+                  <select
+                    value={category}
+                    onChange={(e) => setCategory(e.target.value)}
+                    className="block w-full px-4 py-3 bg-slate-800/50 border border-slate-600/50 rounded-xl text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-sm appearance-none"
+                    required
+                  >
+                    <option value="" disabled>Select a service type...</option>
+                    {CATEGORIES.map(cat => (
+                      <option key={cat} value={cat}>{cat}</option>
+                    ))}
+                  </select>
+                </div>
+                
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-medium text-slate-300 mb-1">Years of Experience *</label>
+                    <input
+                      type="number"
+                      required
+                      min="0"
+                      value={experience}
+                      onChange={(e) => setExperience(e.target.value)}
+                      className="block w-full px-4 py-3 bg-slate-800/50 border border-slate-600/50 rounded-xl text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-sm"
+                      placeholder="e.g. 5"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-slate-300 mb-1">Hourly Charge (₹) *</label>
+                    <input
+                      type="number"
+                      required
+                      min="0"
+                      value={hourlyCharge}
+                      onChange={(e) => setHourlyCharge(e.target.value)}
+                      className="block w-full px-4 py-3 bg-slate-800/50 border border-slate-600/50 rounded-xl text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-sm"
+                      placeholder="e.g. 500"
+                    />
+                  </div>
+                </div>
               </div>
             )}
 

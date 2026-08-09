@@ -7,7 +7,7 @@ import { db } from '../inMemoryDb.js';
 
 export const registerUser = async (req: Request, res: Response) => {
   try {
-    const { name, username, email, password, role, city, area, pincode, address, category } = req.body;
+    const { name, username, email, password, role, city, area, pincode, address, category, phoneNumber, experience, hourlyCharge } = req.body;
 
     if (mongoose.connection.readyState !== 1) {
       const userExists = db.users.find(u => u.email === email || (u.username && u.username === username));
@@ -19,7 +19,7 @@ export const registerUser = async (req: Request, res: Response) => {
       const newUser = {
         _id: new mongoose.Types.ObjectId().toString(),
         name, username, email, password: hashedPassword, role: role || 'Customer',
-        city, area, pincode, address, category,
+        city, area, pincode, address, category, phoneNumber, experience, hourlyCharge,
         createdAt: new Date()
       };
       db.users.push(newUser);
@@ -48,7 +48,7 @@ export const registerUser = async (req: Request, res: Response) => {
       email,
       password: hashedPassword,
       role: role || 'Customer',
-      city, area, pincode, address, category
+      city, area, pincode, address, category, phoneNumber, experience, hourlyCharge
     });
 
     if (user) {
@@ -71,46 +71,40 @@ export const registerUser = async (req: Request, res: Response) => {
 export const loginUser = async (req: Request, res: Response) => {
   try {
     const { email, password } = req.body;
-
-    // Check existing in-memory users (for Admin and seeded users)
-    if (mongoose.connection.readyState !== 1) {
-      const user = db.users.find(u => u.email === email || (u.username === email));
-      if (user && (await bcrypt.compare(password, user.password))) {
-        return res.json({
-          _id: user._id,
-          name: user.name,
-          username: user.username,
-          email: user.email,
-          role: user.role,
-          token: generateToken(user._id, user.role),
-        });
-      }
-    } else {
-      // Check database
-      const user = await User.findOne({ $or: [{ email: email }, { username: email }] });
-      if (user && (await bcrypt.compare(password, user.password))) {
-        return res.json({
-          _id: user._id,
-          name: user.name,
-          username: user.username,
-          email: user.email,
-          role: user.role,
-          token: generateToken(user._id.toString(), user.role),
-        });
-      }
+    
+    if (!email && !password) {
+      return res.status(400).json({ message: 'Invalid username/email or password.' });
+    }
+    if (!email) {
+      return res.status(400).json({ message: 'Please enter your username or email.' });
+    }
+    if (!password) {
+      return res.status(400).json({ message: 'Please enter your password.' });
     }
 
-    // Dynamic Login for any other credentials (No storage needed)
-    const fakeId = new mongoose.Types.ObjectId().toString();
-    const displayName = email.split('@')[0];
-    
+    let user;
+    if (mongoose.connection.readyState !== 1) {
+      user = db.users.find(u => u.email === email || (u.username === email));
+    } else {
+      user = await User.findOne({ $or: [{ email: email }, { username: email }] });
+    }
+
+    if (!user) {
+      return res.status(404).json({ message: 'Account not found. Please create an account before logging in.' });
+    }
+
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) {
+      return res.status(401).json({ message: 'Incorrect password. Please try again.' });
+    }
+
     return res.json({
-      _id: fakeId,
-      name: displayName,
-      username: displayName,
-      email: email.includes('@') ? email : `${email}@example.com`,
-      role: 'Customer',
-      token: generateToken(fakeId, 'Customer'),
+      _id: user._id,
+      name: user.name,
+      username: user.username,
+      email: user.email,
+      role: user.role,
+      token: generateToken(user._id.toString(), user.role),
     });
 
   } catch (error) {
