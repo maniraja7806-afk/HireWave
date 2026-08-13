@@ -5,7 +5,6 @@ import { fakerEN_IN as faker } from '@faker-js/faker';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
-
 import { User } from './models/User.js';
 import { Service } from './models/Service.js';
 import { Booking } from './models/Booking.js';
@@ -33,16 +32,14 @@ const CATEGORIES = [
 async function seed() {
   try {
     console.log('Generating seed data locally...');
-    
     const MONGODB_URI = process.env.MONGODB_URI;
     let isMongoConnected = false;
-    
+
     if (MONGODB_URI && !MONGODB_URI.includes('user:pass')) {
       try {
         await mongoose.connect(MONGODB_URI);
         isMongoConnected = true;
         console.log('Connected to MongoDB Atlas for seeding.');
-        // Clear existing data
         await User.deleteMany({});
         await Service.deleteMany({});
         await Booking.deleteMany({});
@@ -56,8 +53,7 @@ async function seed() {
     } else {
        console.log('Skipping MongoDB connection (no valid MONGODB_URI).');
     }
-    
-    // We will use mongoose.Types.ObjectId() directly to generate IDs
+
     const salt = await bcrypt.genSalt(10);
     const defaultPassword = await bcrypt.hash('password123', salt);
 
@@ -65,6 +61,7 @@ async function seed() {
     const admin = {
       _id: new mongoose.Types.ObjectId(),
       name: 'HireWave Admin',
+      username: 'admin',
       email: 'admin@hirewave.com',
       password: defaultPassword,
       role: 'Admin',
@@ -80,6 +77,7 @@ async function seed() {
       customers.push({
         _id: new mongoose.Types.ObjectId(),
         name: faker.person.fullName(),
+        username: `customer_${i+1}_${Math.floor(Math.random()*900+100)}`,
         email: faker.internet.email(),
         password: defaultPassword,
         role: 'Customer',
@@ -108,55 +106,55 @@ async function seed() {
       'Priya', 'Kavitha', 'Meena', 'Lakshmi', 'Radha', 'Revathi', 'Chitra', 'Bhavani',
       'Nandhini', 'Anitha', 'Divya', 'Ramya', 'Nithya', 'Shalini', 'Gayathri', 'Geetha'
     ];
-    
+
     const TAMIL_LAST_NAMES = [
       'Kumar', 'Raj', 'Nathan', 'Swamy', 'Rajan', 'Sekar', 'Krishnan', 'Ram', 
       'Pandian', 'Chander', 'Srinivasan', 'Murthy', 'Raman', 'Ganesan', 'Mani'
     ];
 
-    console.log(`Generating Providers for ${TN_DISTRICTS.length} TN Districts (505 per district)...`);
+    console.log(`Generating Providers for ${TN_DISTRICTS.length} TN Districts (4 per district = 140+ providers)...`);
     const providers = [];
+    const providerCredentialsList = [];
+
     for (const district of TN_DISTRICTS) {
-      for (let i = 0; i < 505; i++) {
+      for (let i = 0; i < 4; i++) {
         const category = faker.helpers.arrayElement(CATEGORIES);
         const firstName = faker.helpers.arrayElement(TAMIL_FIRST_NAMES);
         const lastName = faker.helpers.arrayElement(TAMIL_LAST_NAMES);
         const providerName = `${firstName} ${lastName}`;
         
+        const username = `prov_${district.toLowerCase().replace(/[^a-z0-9]/g, '')}_${i+1}_${Math.floor(Math.random()*9000+1000)}`;
+        const plainPassword = `Pass@${district.substring(0,3)}${i+1}#${Math.floor(Math.random()*900+100)}`;
+        const hashedPassword = await bcrypt.hash(plainPassword, salt);
+        const email = `${firstName.toLowerCase()}.${lastName.toLowerCase()}.${district.toLowerCase().replace(/[^a-z]/g, '')}${i+1}_${Math.floor(Math.random()*900+100)}@example.com`;
+
+        providerCredentialsList.push({
+          name: providerName,
+          category,
+          city: district,
+          username,
+          password: plainPassword
+        });
+
         providers.push({
           _id: new mongoose.Types.ObjectId(),
           name: providerName,
-          email: `${firstName.toLowerCase()}.${lastName.toLowerCase()}.${district.toLowerCase().replace(/[^a-z]/g, '')}${i}@example.com`,
-          password: defaultPassword,
+          username,
+          email,
+          password: hashedPassword,
           role: 'Provider',
           category: category,
           phoneNumber: faker.phone.number(),
           address: faker.location.streetAddress(),
           area: faker.location.street(),
-          city: district, // ensure search hits
-          pincode: faker.location.zipCode('6#####'), // TN pincodes typically start with 6
-          isVerified: faker.datatype.boolean({ probability: 0.85 }), // 85% verified
+          city: district,
+          pincode: faker.location.zipCode('6#####'),
+          isVerified: true,
           experience: faker.number.int({ min: 1, max: 15 }),
           serviceArea: `${district} and surrounding areas`,
-          description: (() => {
-            const exp = faker.number.int({ min: 1, max: 15 });
-            const years = exp > 1 ? `${exp} years` : '1 year';
-            switch (category) {
-              case 'AC Technician': return `Professional AC Technician with ${years} of experience in ${district}. Specializing in AC installation, repair, gas filling, and routine maintenance for all major brands including Voltas, LG, and Daikin. Prompt service and guaranteed satisfaction.`;
-              case 'Refrigerator Repair': return `Expert refrigerator repair specialist operating in ${district} for over ${years}. Proficient in fixing cooling issues, compressor replacement, gas leak repair, and thermostat issues for single-door, double-door, and side-by-side fridges.`;
-              case 'Washing Machine Repair': return `Experienced washing machine technician with ${years} of expertise in ${district}. I provide reliable repair services for front-load, top-load, and semi-automatic machines of all major brands. I handle issues ranging from drum noise to drainage problems.`;
-              case 'Microwave Repair': return `Skilled microwave repair technician based in ${district} with ${years} of experience. Offering fast and reliable diagnostics, magnetron repairs, keypad replacements, and general servicing for convection and solo microwaves.`;
-              case 'Television Repair': return `Professional TV repair expert serving ${district}. With ${years} of experience, I specialize in repairing LED, LCD, OLED, and Smart TVs. Services include panel replacement, backlight repair, and motherboard-level troubleshooting.`;
-              case 'Water Purifier Service': return `Certified water purifier technician in ${district} with ${years} of handling RO, UV, and UF systems. Providing complete servicing, filter replacement, membrane cleaning, and installation to ensure your drinking water is 100% safe.`;
-              case 'Electrician': return `Licensed and experienced electrician available in ${district} for over ${years}. I handle all types of residential and commercial electrical work including wiring, switchboard installation, inverter setup, and fault finding. Safety and quality guaranteed.`;
-              case 'Plumber': return `Reliable plumbing professional with ${years} of service in ${district}. Capable of fixing leaks, unclogging drains, installing water heaters, taps, and full bathroom fittings. Prompt response for emergency plumbing issues.`;
-              case 'Home Appliance Installation': return `Expert home appliance installer with ${years} of experience in ${district}. I provide safe and professional installation services for TVs, washing machines, ACs, and other major home appliances. Ensuring your devices are set up correctly the first time.`;
-              case 'General Appliance Maintenance': return `Your trusted partner for general appliance maintenance in ${district}. With ${years} of experience, I provide comprehensive preventive maintenance for all household appliances, expanding their lifespan and optimizing performance.`;
-              default: return `Professional service provider in ${district} with ${years} of experience. Dedicated to delivering high-quality, reliable, and prompt solutions for your home appliance needs. Customer satisfaction is my top priority.`;
-            }
-          })(),
+          description: `Professional ${category} with years of experience in ${district}.`,
           availability: 'Mon-Sat, 9AM-6PM',
-          hourlyCharge: faker.number.int({ min: 150, max: 1200 }), // realistic prices in INR
+          hourlyCharge: faker.number.int({ min: 150, max: 1200 }),
           profileImage: `https://ui-avatars.com/api/?name=${encodeURIComponent(providerName)}&background=random&color=fff&size=150`,
           averageRating: faker.number.float({ min: 3.5, max: 5, fractionDigits: 1 }),
           reviewCount: faker.number.int({ min: 10, max: 150 }),
@@ -240,6 +238,15 @@ async function seed() {
         });
     }
 
+    console.log('Saving provider-credentials.csv...');
+    let csvContent = "Provider Name | Service Category | City | Username | Password\n";
+    providerCredentialsList.forEach(p => {
+      csvContent += `${p.name} | ${p.category} | ${p.city} | ${p.username} | ${p.password}\n`;
+    });
+    fs.writeFileSync(path.join(__dirname, '../../provider-credentials.csv'), csvContent);
+    fs.writeFileSync(path.join(__dirname, '../../provider-credentials.json'), JSON.stringify(providerCredentialsList, null, 2));
+    console.log('Saved provider-credentials.csv and provider-credentials.json successfully.');
+
     console.log('Saving all data to seed-data.json...');
     const exportData = {
       users: [admin, ...customers, ...providers],
@@ -249,26 +256,22 @@ async function seed() {
       favorites: favorites,
       notifications: notifications
     };
-
     fs.writeFileSync(path.join(__dirname, '../../seed-data.json'), JSON.stringify(exportData));
     console.log('Saved to seed-data.json.');
 
     if (isMongoConnected) {
       console.log('Saving data to MongoDB Atlas...');
-      
       const chunkSize = 1000;
       console.log(`Inserting ${exportData.users.length} users...`);
       for (let i = 0; i < exportData.users.length; i += chunkSize) {
         await User.insertMany(exportData.users.slice(i, i + chunkSize));
         console.log(`  Inserted ${Math.min(i + chunkSize, exportData.users.length)} / ${exportData.users.length} users`);
       }
-
       console.log(`Inserting ${exportData.services.length} services...`);
       for (let i = 0; i < exportData.services.length; i += chunkSize) {
         await Service.insertMany(exportData.services.slice(i, i + chunkSize));
         console.log(`  Inserted ${Math.min(i + chunkSize, exportData.services.length)} / ${exportData.services.length} services`);
       }
-
       await Booking.insertMany(exportData.bookings);
       await Review.insertMany(exportData.reviews);
       await Favorite.insertMany(exportData.favorites);

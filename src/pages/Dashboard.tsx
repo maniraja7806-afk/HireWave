@@ -1,4 +1,6 @@
 import { getCategoryIcon } from './Services';
+import { AdminProvidersTab } from '../components/AdminProvidersTab';
+import { Users } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
 import api from '../services/api';
 import { useAuth } from '../context/AuthContext';
@@ -244,7 +246,7 @@ export const Dashboard = () => {
     }
   };
 
-  const upcomingBookings = bookings.filter((b: any) => ['Pending', 'Accepted'].includes(b.status));
+  const upcomingBookings = bookings.filter((b: any) => ['Pending', 'Confirmed', 'Accepted'].includes(b.status));
   const pastBookings = bookings.filter((b: any) => ['Completed', 'Rejected', 'Cancelled'].includes(b.status));
 
   if (!user) return <div className="p-8 text-center text-slate-500 dark:text-slate-400">Please log in.</div>;
@@ -478,26 +480,32 @@ export const Dashboard = () => {
                           {user.role === 'Provider' && booking.status === 'Pending' && (
                             <div className="flex gap-2 items-center md:flex-col md:justify-center">
                               <button 
-                                onClick={() => handleUpdateStatus(booking._id, 'Accepted')}
+                                onClick={() => handleUpdateStatus(booking._id, 'Confirmed')}
                                 className="border border-green-600 bg-green-600 text-white hover:bg-green-700 px-5 py-2 rounded-lg font-medium transition-colors w-full shadow-sm"
                               >
-                                Accept
+                                Confirm Appointment
                               </button>
                               <button 
-                                onClick={() => handleUpdateStatus(booking._id, 'Rejected')}
+                                onClick={() => handleUpdateStatus(booking._id, 'Cancelled')}
                                 className="border border-red-200 dark:border-red-900/50 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 px-5 py-2 rounded-lg font-medium transition-colors w-full"
                               >
-                                Reject
+                                Cancel Appointment
                               </button>
                             </div>
                           )}
-                          {user.role === 'Provider' && booking.status === 'Accepted' && (
-                            <div className="flex items-center md:flex-col md:justify-center">
+                          {user.role === 'Provider' && (booking.status === 'Accepted' || booking.status === 'Confirmed') && (
+                            <div className="flex gap-2 items-center md:flex-col md:justify-center">
                               <button 
                                 onClick={() => handleUpdateStatus(booking._id, 'Completed')}
                                 className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded-lg font-medium transition-colors w-full shadow-sm"
                               >
                                 Mark Completed
+                              </button>
+                              <button 
+                                onClick={() => handleUpdateStatus(booking._id, 'Cancelled')}
+                                className="border border-red-200 dark:border-red-900/50 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 px-5 py-2 rounded-lg font-medium transition-colors w-full"
+                              >
+                                Cancel Appointment
                               </button>
                             </div>
                           )}
