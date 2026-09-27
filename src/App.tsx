@@ -34,9 +34,11 @@ const NotificationManager = ({ addNotification }: { addNotification: (msg: strin
     let isMounted = true;
     
     const fetchBookings = async () => {
+      const token = localStorage.getItem('token');
+      if (!token || !user) return;
       try {
-        const response = await api.get('/bookings/my-bookings');
-        const currentBookings = response.data;
+        const response = await api.get('/bookings');
+        const currentBookings = Array.isArray(response.data) ? response.data : [];
         
         if (prevBookingsRef.current.length > 0) {
            currentBookings.forEach((currentBooking: any) => {
@@ -90,9 +92,9 @@ const PageHeader = () => {
     <div className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-md sticky top-[73px] z-40 border-b border-slate-200 dark:border-slate-800">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex items-center gap-4">
         <motion.button whileTap={{ scale: 0.95 }}
-          onClick={() => navigate(-1)}
+          onClick={() => navigate('/')}
           className="px-3 py-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 transition-colors flex items-center gap-2 font-medium text-sm"
-          title="Go Back"
+          title="Go to Home"
         >
           <ArrowLeft className="w-4 h-4" /> Back
         </motion.button>

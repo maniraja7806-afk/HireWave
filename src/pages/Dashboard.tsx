@@ -6,7 +6,7 @@ import api from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { Calendar, User, Star, CopyPlus, MessageSquare, MapPin, BarChart3, Clock, AlertTriangle, X, ArrowRight } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 
 const TabButton = ({ active, onClick, icon: Icon, label }: any) => (
@@ -128,7 +128,8 @@ const AnalyticsPlaceholder = () => (
 );
 
 export const Dashboard = () => {
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
+  const navigate = useNavigate();
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('bookings');
@@ -156,34 +157,63 @@ export const Dashboard = () => {
   const [loadingFavorites, setLoadingFavorites] = useState(false);
 
   useEffect(() => {
+    if (authLoading) return;
+
+    const token = localStorage.getItem('token');
+    if (!token || !user) {
+      navigate('/login');
+      return;
+    }
+
     fetchBookings();
     if (user?.role === 'Customer') {
       fetchFavorites();
     }
     
-    // Simple polling for "real-time" mock updates
-    const interval = setInterval(fetchBookings, 10000);
+    // Polling for updates only while authenticated
+    const interval = setInterval(() => {
+      const activeToken = localStorage.getItem('token');
+      if (activeToken) {
+        fetchBookings();
+      }
+    }, 10000);
     return () => clearInterval(interval);
-  }, [user]);
+  }, [user, authLoading, navigate]);
 
   const fetchBookings = async () => {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      setLoading(false);
+      return;
+    }
     try {
       const res = await api.get('/bookings');
       setBookings(Array.isArray(res.data) ? res.data : []);
-    } catch (error) {
-      console.error('Error fetching bookings', error);
+    } catch (error: any) {
+      if (error.response?.status === 401) {
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        navigate('/login');
+        return;
+      }
+      console.warn('Error fetching bookings:', error.message || error);
     } finally {
       setLoading(false);
     }
   };
 
   const fetchFavorites = async () => {
+    const token = localStorage.getItem('token');
+    if (!token) return;
     setLoadingFavorites(true);
     try {
       const res = await api.get('/users/favorites');
       setFavorites(Array.isArray(res.data) ? res.data : []);
-    } catch (error) {
-      console.error('Error fetching favorites', error);
+    } catch (error: any) {
+      if (error.response?.status === 401) {
+        return;
+      }
+      console.warn('Error fetching favorites:', error.message || error);
     } finally {
       setLoadingFavorites(false);
     }
@@ -249,7 +279,28 @@ export const Dashboard = () => {
   const upcomingBookings = bookings.filter((b: any) => ['Pending', 'Confirmed', 'Accepted'].includes(b.status));
   const pastBookings = bookings.filter((b: any) => ['Completed', 'Rejected', 'Cancelled'].includes(b.status));
 
-  if (!user) return <div className="p-8 text-center text-slate-500 dark:text-slate-400">Please log in.</div>;
+  if (authLoading) {
+    return (
+      <div className="flex-grow flex items-center justify-center min-h-[400px]">
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-10 h-10 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+          <p className="text-sm text-slate-500 dark:text-slate-400">Loading your account...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return (
+      <div className="flex-grow flex flex-col items-center justify-center min-h-[400px] p-8 text-center">
+        <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-2">Authentication Required</h3>
+        <p className="text-slate-500 dark:text-slate-400 mb-6">Please log in to access your dashboard.</p>
+        <Link to="/login" className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-xl shadow transition-colors">
+          Go to Login
+        </Link>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8 w-full transition-colors flex flex-col md:flex-row gap-8">
@@ -259,11 +310,11 @@ export const Dashboard = () => {
          <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 p-6 mb-6">
            <div className="flex items-center gap-4 mb-4">
              <div className="w-16 h-16 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center text-blue-600 dark:text-blue-400 font-bold text-2xl">
-               {user.name.charAt(0)}
+               {user?.name ? user.name.charAt(0).toUpperCase() : 'U'}
              </div>
              <div>
-               <h3 className="font-bold text-slate-900 dark:text-white line-clamp-1">{user.name}</h3>
-               <p className="text-sm text-slate-500 dark:text-slate-400">{user.role}</p>
+               <h3 className="font-bold text-slate-900 dark:text-white line-clamp-1">{user?.name || 'User'}</h3>
+               <p className="text-sm text-slate-500 dark:text-slate-400">{user?.role || 'Customer'}</p>
              </div>
            </div>
            

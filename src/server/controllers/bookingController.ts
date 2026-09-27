@@ -51,7 +51,9 @@ export const getMyBookings = async (req: AuthRequest, res: Response) => {
 
     if (mongoose.connection.readyState !== 1) {
       const myBookings = db.bookings.filter(b => {
-        if (req.user!.role === 'Provider') {
+        if (req.user!.role === 'Admin') {
+          return true;
+        } else if (req.user!.role === 'Provider') {
           return b.provider._id ? b.provider._id.toString() === req.user!.id : b.provider.toString() === req.user!.id;
         } else {
           return b.customer._id ? b.customer._id.toString() === req.user!.id : b.customer.toString() === req.user!.id;
@@ -61,7 +63,9 @@ export const getMyBookings = async (req: AuthRequest, res: Response) => {
     }
 
     let bookings;
-    if (req.user.role === 'Provider') {
+    if (req.user.role === 'Admin') {
+      bookings = await Booking.find().populate('service').populate('customer', 'name email').populate('provider', 'name email');
+    } else if (req.user.role === 'Provider') {
       bookings = await Booking.find({ provider: req.user.id }).populate('service').populate('customer', 'name email');
     } else {
       bookings = await Booking.find({ customer: req.user.id }).populate('service').populate('provider', 'name email');
