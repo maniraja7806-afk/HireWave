@@ -119,45 +119,6 @@ const Login = () => {
             </motion.button>
           </form>
 
-          {/* Quick Demo Credentials */}
-          <div className="mt-6 pt-5 border-t border-white/10">
-            <p className="text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2.5 text-center">
-              Quick Demo Fill
-            </p>
-            <div className="grid grid-cols-3 gap-2">
-              <button
-                type="button"
-                onClick={() => {
-                  setEmail('admin@hirewave.com');
-                  setPassword('admin123');
-                }}
-                className="py-1.5 px-2 bg-purple-500/20 hover:bg-purple-500/30 border border-purple-500/30 rounded-lg text-xs font-medium text-purple-200 transition-colors text-center"
-              >
-                🛡️ Admin
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setEmail('john.doe@example.com');
-                  setPassword('password123');
-                }}
-                className="py-1.5 px-2 bg-blue-500/20 hover:bg-blue-500/30 border border-blue-500/30 rounded-lg text-xs font-medium text-blue-200 transition-colors text-center"
-              >
-                👤 Customer
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setEmail('karthik.rajan@example.com');
-                  setPassword('password123');
-                }}
-                className="py-1.5 px-2 bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/30 rounded-lg text-xs font-medium text-emerald-200 transition-colors text-center"
-              >
-                🛠️ Provider
-              </button>
-            </div>
-          </div>
-          
           <div className="mt-6 text-center text-sm text-slate-300">
             Don't have an account?{' '}
             <Link to="/register" className="font-bold text-blue-400 hover:text-blue-300 transition-colors">
